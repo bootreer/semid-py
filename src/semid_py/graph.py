@@ -55,9 +55,6 @@ class MixedGraph:
         if nodes is not None:
             assert nodes == self.nodes
 
-        self.d_adj = d_adj
-        self.b_adj = b_adj
-
         self.directed = ig.Graph.Adjacency(matrix=d_adj, mode="directed")
         self.bidirected = ig.Graph.Adjacency(matrix=b_adj, mode="undirected")
 
@@ -69,12 +66,148 @@ class MixedGraph:
         new_O = self.b_adj[nodes, :][:, nodes]
         return MixedGraph(new_L, new_O)
 
-    # TODO?
-    def get_half_trek_system(self):
-        pass
+    def get_trek_system(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        avoid_left_nodes: list[int] = [],
+        avoid_right_nodes: list[int] = [],
+        avoid_left_edges: list[tuple[int, int]] = [],
+        avoid_right_edges: list[tuple[int, int]] = [],
+    ) -> dict:
+        """
+        Determines if a trek system exists in the mixed graph.
 
-    # TODO?
-    def get_trek_system(self):
+        A trek system is a set of node-disjoint treks from from_nodes to to_nodes.
+        A trek is a path that goes backwards along directed edges, then forwards.
+
+        Args:
+            from_nodes: The start nodes
+            to_nodes: The end nodes
+            avoid_left_nodes: Nodes to avoid on the left (backward) side of treks
+            avoid_right_nodes: Nodes to avoid on the right (forward) side of treks
+            avoid_left_edges: Directed edges to avoid on left side (as list of (i,j) tuples)
+            avoid_right_edges: Directed edges to avoid on right side (as list of (i,j) tuples)
+
+        Returns:
+            dict with:
+                - system_exists: True if a trek system of size len(to_nodes) exists
+                - active_from: The subset of from_nodes used in the maximal trek system
+        """
+        # Build trek graph structure (createTrekFlowGraph(L = adjMatr(createTrGraph)))
+        # For m nodes in mixed graph, we create:
+        # - Nodes 0..m-1: "in" parts of left copies
+        # - Nodes m..2m-1: "out" parts of left copies
+        # - Nodes 2m..3m-1: "in" parts of right copies
+        # - Nodes 3m..4m-1: "out" parts of right copies
+        # - Node 4m: source
+        # - Node 4m+1: sink
+
+        m = self.nodes
+        NODES = 4 * m + 2
+        SOURCE = 4 * m
+        SINK = 4 * m + 1
+
+        cap = np.zeros((NODES, NODES), dtype=int)
+
+        # Left side: in-parts connect to out-parts (vertex capacity)
+        for i in range(m):
+            cap[i, m + i] = 1
+
+        # Left side: out-parts connect backwards (transpose of directed edges)
+        cap[m : 2 * m, 0:m] = self.d_adj.T
+
+        # Right side: in-parts connect to out-parts (vertex capacity)
+        for i in range(m):
+            cap[2 * m + i, 3 * m + i] = 1
+
+        # Right side: out-parts connect forwards (directed edges)
+        cap[3 * m : 4 * m, 2 * m : 3 * m] = self.d_adj
+
+        # Left out-parts connect to right in-parts (bridge between left and right)
+        for i in range(m):
+            cap[m + i, 2 * m + i] = 1
+
+        # Source connects to in-parts of from_nodes (left side)
+        for node in from_nodes:
+            cap[SOURCE, node] = 1
+
+        # Out-parts of to_nodes (right side) connect to sink
+        for node in to_nodes:
+            cap[3 * m + node, SINK] = 1
+
+        # Apply avoidances by setting vertex capacities to 0
+        for node in avoid_left_nodes:
+            cap[node, m + node] = 0  # Block vertex capacity
+
+        for node in avoid_right_nodes:
+            cap[2 * m + node, 3 * m + node] = 0  # Block vertex capacity
+
+        # Apply edge avoidances (edges on left are reversed)
+        for i, j in avoid_left_edges:
+            cap[m + j, i] = 0  # Note: reversed because left goes backwards
+
+        for i, j in avoid_right_edges:
+            cap[3 * m + i, 2 * m + j] = 0
+
+        graph = ig.Graph.Adjacency(cap.tolist(), mode="directed")
+        flow_result = graph.maxflow(SOURCE, SINK)
+
+        # Determine which source nodes are active (have non-zero flow from source)
+        active_from = [
+            node for node in from_nodes if flow_result.flow[SOURCE][node] > 0
+        ]
+
+        return {
+            "system_exists": flow_result.value == len(to_nodes),
+            "active_from": active_from,
+        }
+
+    def get_half_trek_system(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        avoid_left_nodes: list[int] = [],
+        avoid_right_nodes: list[int] = [],
+        avoid_right_edges: list[tuple[int, int]] = [],
+    ) -> dict:
+        """
+        Determines if a half-trek system exists in the mixed graph.
+
+        A half-trek system is a trek system where directed edges cannot be used
+        on the left (backward) side - only on the right (forward) side.
+
+        Args:
+            from_nodes: The start nodes
+            to_nodes: The end nodes
+            avoid_left_nodes: Nodes to avoid on the left side
+            avoid_right_nodes: Nodes to avoid on the right side
+            avoid_right_edges: Directed edges to avoid on right side
+
+        Returns:
+            dict with:
+                - system_exists: True if a half-trek system exists
+                - active_from: The subset of from_nodes used
+        """
+        # Get all directed edges to avoid on the left side
+        avoid_left_edges = [
+            (i, j)
+            for i in range(self.nodes)
+            for j in range(self.nodes)
+            if self.d_adj[i, j] != 0
+        ]
+
+        return self.get_trek_system(
+            from_nodes=from_nodes,
+            to_nodes=to_nodes,
+            avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            avoid_left_edges=avoid_left_edges,
+            avoid_right_edges=avoid_right_edges,
+        )
+
+    # TODO
+    def max_flow_cap(self):
         pass
 
     #############################################
@@ -219,6 +352,10 @@ class MixedGraph:
         return result < np.sum(self.d_adj)
 
     #############################################
+    # Ancestral Identifiability
+    # TODO:
+
+    #############################################
     # Global Identifiability
 
     def bidirected_components(self) -> list[Self]:
@@ -240,7 +377,9 @@ class MixedGraph:
                 return False
             else:
                 for s in sinks:
-                    ancestors = comp.directed.neighborhood(vertices=s)
+                    ancestors = comp.directed.neighborhood(
+                        vertices=s, order=comp.nodes, mode="in"
+                    )
                     if len(ancestors) > 1:
                         ag = comp.induced_subgraph(ancestors)
                         comps.extend(ag.bidirected_components())
