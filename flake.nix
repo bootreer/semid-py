@@ -73,15 +73,19 @@
         in
         {
           default = pkgs.mkShell {
-            packages =
-              with pkgs;
-              [
-                pyright
-                ruff
-                nil
-                uv
-              ]
-              ++ [ virtualenv ];
+            packages = with pkgs; [
+              pyright
+              ruff
+              nil
+              (python3.withPackages (
+                ps: with ps; [
+                  pyrefly
+                ]
+              ))
+              ty
+              uv
+              virtualenv
+            ];
             env = {
               UV_NO_SYNC = "1";
               UV_PYTHON = pythonSet.python.interpreter;
