@@ -4,8 +4,7 @@ import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
 
-import semid_py.utils as utils
-from semid_py.latent_digraph import LatentDigraph
+from semid_py import LatentDigraph, utils
 
 
 # NOTE: 0-indexed unlike in R
