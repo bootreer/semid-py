@@ -6,10 +6,16 @@ readme = "README.md"
 authors = [
     { name = "tuomas", email = "ty.pirhonen@tum.de" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     "igraph>=0.11.9",
     "numpy>=2.3.3",
+]
+
+[tool.pyrefly]
+project-includes = [
+    "**/*.py*",
+    "**/*.ipynb",
 ]
 
 [build-system]

@@ -1,5 +1,7 @@
+from typing import Optional
+
 import numpy as np
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 
 
 def validate_matrix(mat: NDArray):
@@ -28,3 +30,14 @@ def validate_matrices(L: NDArray, O: NDArray):  # noqa: E741
 
 def matrix_to_edgelist(adj: np.ndarray):
     pass
+
+
+def reshape_arr(
+    matrix: NDArray | list[int], nodes: Optional[int] = None
+) -> NDArray[np.int32]:
+    if isinstance(matrix, np.ndarray) and matrix.ndim > 1:
+        assert matrix.ndim == 2, "Matrix must be 2-dimensional"
+        return matrix.astype(np.int32)
+    else:
+        assert nodes is not None, "node count required for 1D array or list"
+        return np.array(matrix, dtype=np.int32).reshape((nodes, nodes))

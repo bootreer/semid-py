@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from semid_py.graph import MixedGraph
+from semid_py import MixedGraph
 
 from .conftest import GRAPH_EXAMPLES, Graph
 
@@ -13,14 +13,13 @@ def test_htc_id(graph: Graph):
     result = mg.htc_id()
 
     if graph.htc_id == 1:
-        result.sort()
-        assert (result == np.arange(m)).all(), (
+        assert result is not None
+        assert (sorted(result) == np.arange(m)).all(), (
             "Identifiable graph should return all nodes as half-trek identifiable"
         )
     else:
-        assert result is None or (
-            result.size < m and np.isin(result, range(m)).all()
-        ), "Non-Identfiable graph is identifiable?"
+        assert result is None or (len(result) < m and np.isin(result, range(m)).all())
+
 
 @pytest.mark.parametrize("graph", GRAPH_EXAMPLES)
 def test_non_htc_id(graph: Graph):

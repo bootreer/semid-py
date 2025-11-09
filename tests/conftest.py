@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy._typing import NDArray
 
-from semid_py.graph import MixedGraph
+from semid_py import MixedGraph
 
 
 @dataclass
@@ -21,7 +21,7 @@ class Graph:
 
     global_id: int
 
-    def _symmetricize(self, arr: NDArray):
+    def _symmetricize(self, arr: NDArray) -> NDArray:
         return ((arr + arr.T) > 0).astype(int)
 
     def to_mixed_graph(self) -> MixedGraph:
