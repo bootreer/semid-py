@@ -35,10 +35,7 @@ class LatentDigraph:
             adj: Adjacency matrix where first num_observed rows are observed nodes
             num_observed: Number of observed nodes. If None, all nodes are observed.
         """
-        self.adj = utils.reshape_arr(
-            adj,
-            nodes
-        )
+        self.adj = utils.reshape_arr(adj, nodes)
         utils.validate_matrix(self.adj)
         self.digraph = ig.Graph.Adjacency(matrix=adj, mode="directed")
 
@@ -227,17 +224,30 @@ class LatentDigraph:
 
         m = self.nodes
 
-        # Build set of allowed nodes in trek graph (2m nodes total)
+        # Build set of avoided nodes in trek graph (2m nodes total)
         avoid_set = set(avoid_left_nodes) | set(n + m for n in avoid_right_nodes)
-        allowed = [i for i in range(2 * m) if i not in avoid_set]
 
-        # Use BFS to find reachable nodes
+        # Manual BFS that respects avoid constraints (python-igraph lacks 'restricted' param)
+        # We cannot traverse THROUGH avoided nodes
         reachable = set()
-        for node in nodes:
-            result = self._tr_graph.bfs(
-                vid=node, mode="out", unreachable=False, restricted=allowed
-            )
-            reachable.update(result[0])
+        for start_node in nodes:
+            if start_node in avoid_set:
+                continue
+
+            queue = [start_node]
+            visited = {start_node}
+            reachable.add(start_node)
+
+            while queue:
+                current = queue.pop(0)
+
+                # Get outgoing neighbors
+                neighbors = self._tr_graph.neighbors(current, mode="out")
+                for neighbor in neighbors:
+                    if neighbor not in visited and neighbor not in avoid_set:
+                        visited.add(neighbor)
+                        reachable.add(neighbor)
+                        queue.append(neighbor)
 
         # Convert back from trek graph node indices to original graph indices
         # Nodes 0..m-1 map to themselves, nodes m..2m-1 map to 0..m-1
@@ -256,6 +266,44 @@ class LatentDigraph:
                 result.append(node)
 
         return result
+
+    def htr_from(
+        self,
+        nodes: list[int],
+        avoid_left_nodes: list[int] = [],
+        avoid_right_nodes: list[int] = [],
+        include_observed: bool = True,
+        include_latents: bool = True,
+    ) -> list[int]:
+        """
+        Get all nodes that are half-trek-reachable from the given nodes.
+
+        A half-trek is a trek where you can only go backwards through the starting nodes,
+        then forwards. This is equivalent to trek reachability where we avoid going
+        backwards through any node except the starting nodes.
+
+        Args:
+            nodes: Nodes to start from
+            avoid_left_nodes: Additional nodes to avoid on the left (backward) side
+            avoid_right_nodes: Nodes to avoid on the right (forward) side
+            include_observed: Whether to include observed nodes in result
+            include_latents: Whether to include latent nodes in result
+
+        Returns:
+            List of half-trek-reachable node indices
+        """
+        # Half-trek: avoid all nodes on the left except the starting nodes
+        all_nodes = list(range(self.nodes))
+        additional_avoid = [n for n in all_nodes if n not in nodes]
+        combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
+
+        return self.tr_from(
+            nodes=nodes,
+            avoid_left_nodes=combined_avoid_left,
+            avoid_right_nodes=avoid_right_nodes,
+            include_observed=include_observed,
+            include_latents=include_latents,
+        )
 
     def _create_trek_flow_graph(self) -> tuple[NDArray[np.int32], int, int]:
         """
@@ -368,7 +416,15 @@ class LatentDigraph:
 
         flow_graph = ig.Graph.Adjacency(cap, mode="directed")
         flow_result = flow_graph.maxflow(SOURCE, SINK)
-        active_from = [node for node in from_nodes if flow_result.flow[node] > 0]
+
+        # Determine which from_nodes are active by checking flow from SOURCE to each
+        active_from = []
+        for node in from_nodes:
+            # Get the edge ID from SOURCE to this from_node's in-part
+            # from_nodes connect to left copies which are at indices 0..m-1
+            edge_id = flow_graph.get_eid(SOURCE, node, directed=True, error=False)
+            if edge_id != -1 and flow_result.flow[edge_id] > 0:
+                active_from.append(node)
 
         return {
             "system_exists": flow_result.value == len(to_nodes),

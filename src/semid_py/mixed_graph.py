@@ -18,8 +18,8 @@ class MixedGraph:
     directed: ig.Graph
     bidirected: ig.Graph
 
-    # TODO: init
     internal: LatentDigraph
+    """Internal representation as LatentDigraph with latent confounders"""
 
     # TODO: named nodes?
     def __init__(
@@ -35,12 +35,93 @@ class MixedGraph:
         self.directed = ig.Graph.Adjacency(matrix=d_adj, mode="directed")
         self.bidirected = ig.Graph.Adjacency(matrix=b_adj, mode="undirected")
 
+        # Create internal LatentDigraph representation
+        # Each bidirected edge gets its own latent confounder
+        num_observed = self.d_adj.shape[0]
+        # Count bidirected edges (upper triangle only, since matrix is symmetric)
+        bidirected_edges = np.argwhere(np.triu(self.b_adj, k=1) == 1)
+        num_latents = len(bidirected_edges)
+        num_total = num_observed + num_latents
+
+        # Build adjacency matrix with latents
+        L_with_latents = np.zeros((num_total, num_total), dtype=np.int32)
+        # Copy directed edges among observed nodes
+        L_with_latents[:num_observed, :num_observed] = self.d_adj
+
+        # Add latent confounders: for each bidirected edge (i,j), add latent L with L->i and L->j
+        for latent_idx, (i, j) in enumerate(bidirected_edges):
+            latent_node = num_observed + latent_idx
+            L_with_latents[latent_node, i] = 1
+            L_with_latents[latent_node, j] = 1
+
+        self.internal = LatentDigraph(L_with_latents, num_observed=num_observed)
+
     @property
     def nodes(self) -> int:
         return self.d_adj.shape[0]
 
     def is_sibling(self, a: int, b: int) -> bool:
         return self.b_adj[a, b] != 0
+
+    def tr_from(
+        self,
+        nodes: list[int],
+        avoid_left_nodes: list[int] = [],
+        avoid_right_nodes: list[int] = [],
+    ) -> list[int]:
+        """
+        Get all nodes that are trek-reachable from the given nodes.
+
+        A trek is a path that goes backwards along directed edges, then forwards.
+        In the mixed graph, this uses the internal LatentDigraph representation
+        but only returns observed nodes.
+
+        Args:
+            nodes: Nodes to start from
+            avoid_left_nodes: Nodes to avoid on the left (backward) side
+            avoid_right_nodes: Nodes to avoid on the right (forward) side
+
+        Returns:
+            List of trek-reachable node indices (observed nodes only)
+        """
+        return self.internal.tr_from(
+            nodes=nodes,
+            avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            include_observed=True,
+            include_latents=False,
+        )
+
+    def htr_from(
+        self,
+        nodes: list[int],
+        avoid_left_nodes: list[int] = [],
+        avoid_right_nodes: list[int] = [],
+    ) -> list[int]:
+        """
+        Get all nodes that are half-trek-reachable from the given nodes.
+
+        A half-trek is a trek where you can only go backwards through the starting
+        nodes, then forwards. Equivalent to avoiding all non-starting nodes on the left.
+
+        Args:
+            nodes: Nodes to start from
+            avoid_left_nodes: Additional nodes to avoid on the left (backward) side
+            avoid_right_nodes: Nodes to avoid on the right (forward) side
+
+        Returns:
+            List of half-trek-reachable node indices
+        """
+        # Half-trek: avoid all nodes on the left except the starting nodes
+        all_nodes = list(range(self.nodes))
+        additional_avoid = [n for n in all_nodes if n not in nodes]
+        combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
+
+        return self.tr_from(
+            nodes=nodes,
+            avoid_left_nodes=combined_avoid_left,
+            avoid_right_nodes=avoid_right_nodes,
+        )
 
     def induced_subgraph(self, nodes: list[int]) -> MixedGraph:
         new_L = self.d_adj[nodes, :][:, nodes]
@@ -79,7 +160,7 @@ class MixedGraph:
             from_nodes,
             to_nodes,
             avoid_left_nodes,
-            avoid_left_nodes,
+            avoid_right_nodes,
             avoid_left_edges,
             avoid_right_edges,
         )
