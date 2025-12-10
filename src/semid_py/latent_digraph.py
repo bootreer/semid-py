@@ -50,8 +50,30 @@ class LatentDigraph:
         self.num_latents = self.adj.shape[0] - num_observed
 
     @property
-    def nodes(self) -> int:
+    def num_nodes(self) -> int:
         return self.adj.shape[0]
+
+    def observed_nodes(self) -> list[int]:
+        """Return list of observed node indices."""
+        return list(range(self.num_observed))
+
+    def latent_nodes(self) -> list[int]:
+        """Return list of latent node indices."""
+        return list(range(self.num_observed, self.num_nodes))
+
+    def observed_parents(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get observed parents of the given nodes.
+
+        Args:
+            nodes: Node or list of nodes to find observed parents of
+
+        Returns:
+            List of observed parent node indices
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        return self.parents(nodes, include_observed=True, include_latents=False)
 
     def parents(
         self,
@@ -74,7 +96,7 @@ class LatentDigraph:
         if include_observed:
             included_nodes.extend(range(self.num_observed))
         if include_latents:
-            included_nodes.extend(range(self.num_observed, self.nodes))
+            included_nodes.extend(range(self.num_observed, self.num_nodes))
 
         # Parents are nodes with edges TO the target nodes
         parent_mask = self.adj[included_nodes, :][:, nodes].sum(axis=1) > 0
@@ -101,7 +123,7 @@ class LatentDigraph:
         if include_observed:
             included_nodes.extend(range(self.num_observed))
         if include_latents:
-            included_nodes.extend(range(self.num_observed, self.nodes))
+            included_nodes.extend(range(self.num_observed, self.num_nodes))
 
         # Children are nodes with edges FROM the source nodes
         child_mask = self.adj[nodes, :][:, included_nodes].sum(axis=0) > 0
@@ -128,7 +150,7 @@ class LatentDigraph:
         ancestors = set()
         for node in nodes:
             ancestors.update(
-                self.digraph.neighborhood(vertices=node, order=self.nodes, mode="in")
+                self.digraph.neighborhood(vertices=node, order=self.num_nodes, mode="in")
             )
 
         result = []
@@ -161,7 +183,7 @@ class LatentDigraph:
         descendants = set()
         for node in nodes:
             descendants.update(
-                self.digraph.neighborhood(vertices=node, order=self.nodes, mode="out")
+                self.digraph.neighborhood(vertices=node, order=self.num_nodes, mode="out")
             )
 
         result = []
@@ -185,7 +207,7 @@ class LatentDigraph:
         Returns:
             igraph Graph representing trek reachability
         """
-        m = self.nodes
+        m = self.num_nodes
         adj_mat = np.zeros((2 * m, 2 * m), dtype=np.int32)
 
         for i in range(m):
@@ -222,7 +244,7 @@ class LatentDigraph:
         if self._tr_graph is None:
             self._tr_graph = self._create_tr_graph()
 
-        m = self.nodes
+        m = self.num_nodes
 
         # Build set of avoided nodes in trek graph (2m nodes total)
         avoid_set = set(avoid_left_nodes) | set(n + m for n in avoid_right_nodes)
@@ -293,7 +315,7 @@ class LatentDigraph:
             List of half-trek-reachable node indices
         """
         # Half-trek: avoid all nodes on the left except the starting nodes
-        all_nodes = list(range(self.nodes))
+        all_nodes = list(range(self.num_nodes))
         additional_avoid = [n for n in all_nodes if n not in nodes]
         combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
 
@@ -327,7 +349,7 @@ class LatentDigraph:
         if self._tr_graph is None:
             self._tr_graph = self._create_tr_graph()
 
-        m = self.nodes
+        m = self.num_nodes
         M = 2 * m
         N = 2 * M + 2
         SOURCE = 2 * M
@@ -374,7 +396,7 @@ class LatentDigraph:
                 - system_exists: True if a trek system of size len(to_nodes) exists
                 - active_from: Subset of from_nodes used in the maximal trek system
         """
-        m = self.nodes
+        m = self.num_nodes
         cap, SOURCE, SINK = self._create_trek_flow_graph()
 
         # Connect source to left copies of from_nodes (these are the "in" parts)

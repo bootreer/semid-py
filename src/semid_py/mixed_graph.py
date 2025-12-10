@@ -4,7 +4,8 @@ import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py import LatentDigraph, utils
+from . import utils
+from .latent_digraph import LatentDigraph
 
 
 # NOTE: 0-indexed unlike in R
@@ -21,16 +22,41 @@ class MixedGraph:
     internal: LatentDigraph
     """Internal representation as LatentDigraph with latent confounders"""
 
-    # TODO: named nodes?
+    c_components: list[dict] = None
+
     def __init__(
         self,
         d_adj: NDArray[np.int32] | list[int],
         b_adj: NDArray[np.int32] | list[int],
         nodes: Optional[int] = None,
+        vertex_nums: Optional[list[int]] = None,
     ):
+        """
+        Create a mixed graph.
+
+        Args:
+            d_adj: Directed adjacency matrix (L)
+            b_adj: Bidirected adjacency matrix (O)
+            nodes: Optional hint for reshaping arrays
+            vertex_nums: Optional list of original vertex IDs. If None, uses [0, 1, 2, ...]
+        """
         self.d_adj = utils.reshape_arr(d_adj, nodes)
         self.b_adj = utils.reshape_arr(b_adj, nodes)
         utils.validate_matrices(self.d_adj, self.b_adj)
+
+        # Track original vertex numbers (external IDs)
+        n = self.d_adj.shape[0]
+        if vertex_nums is None:
+            self._vertex_nums = list(range(n))
+        else:
+            if len(vertex_nums) != n:
+                raise ValueError(
+                    f"vertex_nums length {len(vertex_nums)} != matrix size {n}"
+                )
+            self._vertex_nums = list(vertex_nums)
+
+        # Create fast lookup: external_id -> internal_index
+        self._vertex_to_idx = {v: i for i, v in enumerate(self._vertex_nums)}
 
         self.directed = ig.Graph.Adjacency(matrix=d_adj, mode="directed")
         self.bidirected = ig.Graph.Adjacency(matrix=b_adj, mode="undirected")
@@ -56,9 +82,43 @@ class MixedGraph:
 
         self.internal = LatentDigraph(L_with_latents, num_observed=num_observed)
 
+    def to_internal(self, nodes: int | list[int]) -> int | list[int]:
+        """
+        Convert external vertex IDs to internal 0-based indices.
+
+        Args:
+            nodes: External vertex ID(s)
+
+        Returns:
+            Internal index/indices
+        """
+        if isinstance(nodes, int):
+            return self._vertex_to_idx[nodes]
+        return [self._vertex_to_idx[n] for n in nodes]
+
+    def to_external(self, indices: int | list[int]) -> int | list[int]:
+        """
+        Convert internal 0-based indices to external vertex IDs.
+
+        Args:
+            indices: Internal index/indices
+
+        Returns:
+            External vertex ID(s)
+        """
+        if isinstance(indices, int):
+            return self._vertex_nums[indices]
+        return [self._vertex_nums[i] for i in indices]
+
     @property
-    def nodes(self) -> int:
+    def num_nodes(self) -> int:
+        """Number of nodes in the graph."""
         return self.d_adj.shape[0]
+
+    @property
+    def nodes(self) -> list[int]:
+        """List of vertex IDs in the graph."""
+        return self._vertex_nums.copy()
 
     def is_sibling(self, a: int, b: int) -> bool:
         return self.b_adj[a, b] != 0
@@ -77,20 +137,32 @@ class MixedGraph:
         but only returns observed nodes.
 
         Args:
-            nodes: Nodes to start from
-            avoid_left_nodes: Nodes to avoid on the left (backward) side
-            avoid_right_nodes: Nodes to avoid on the right (forward) side
+            `nodes`: Nodes to start from (external vertex IDs)
+            `avoid_left_nodes`: Nodes to avoid on the left (external vertex IDs)
+            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
 
         Returns:
-            List of trek-reachable node indices (observed nodes only)
+            List of trek-reachable node indices (external vertex IDs)
         """
-        return self.internal.tr_from(
-            nodes=nodes,
-            avoid_left_nodes=avoid_left_nodes,
-            avoid_right_nodes=avoid_right_nodes,
+        # Convert external IDs to internal indices
+        internal_nodes = self.to_internal(nodes)
+        internal_avoid_left = (
+            self.to_internal(avoid_left_nodes) if avoid_left_nodes else []
+        )
+        internal_avoid_right = (
+            self.to_internal(avoid_right_nodes) if avoid_right_nodes else []
+        )
+
+        result_internal = self.internal.tr_from(
+            nodes=internal_nodes,
+            avoid_left_nodes=internal_avoid_left,
+            avoid_right_nodes=internal_avoid_right,
             include_observed=True,
             include_latents=False,
         )
+
+        # Convert results back to external IDs
+        return self.to_external(result_internal)
 
     def htr_from(
         self,
@@ -105,15 +177,15 @@ class MixedGraph:
         nodes, then forwards. Equivalent to avoiding all non-starting nodes on the left.
 
         Args:
-            nodes: Nodes to start from
-            avoid_left_nodes: Additional nodes to avoid on the left (backward) side
-            avoid_right_nodes: Nodes to avoid on the right (forward) side
+            `nodes`: Nodes to start from (external vertex IDs)
+            `avoid_left_nodes`: Additional nodes to avoid on the left (external vertex IDs)
+            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
 
         Returns:
-            List of half-trek-reachable node indices
+            List of half-trek-reachable node indices (external vertex IDs)
         """
         # Half-trek: avoid all nodes on the left except the starting nodes
-        all_nodes = list(range(self.nodes))
+        all_nodes = self.nodes
         additional_avoid = [n for n in all_nodes if n not in nodes]
         combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
 
@@ -124,9 +196,115 @@ class MixedGraph:
         )
 
     def induced_subgraph(self, nodes: list[int]) -> MixedGraph:
-        new_L = self.d_adj[nodes, :][:, nodes]
-        new_O = self.b_adj[nodes, :][:, nodes]
-        return MixedGraph(new_L, new_O)
+        """
+        Create induced subgraph on the given nodes.
+
+        Args:
+            nodes: List of vertex IDs (external) to include in subgraph
+
+        Returns:
+            New MixedGraph with preserved vertex numbering
+        """
+        internal_indices = [self._vertex_to_idx[n] for n in nodes]
+
+        new_L = self.d_adj[np.ix_(internal_indices, internal_indices)]
+        new_O = self.b_adj[np.ix_(internal_indices, internal_indices)]
+
+        return MixedGraph(new_L, new_O, vertex_nums=nodes)
+
+    def ancestors(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get all ancestor nodes (nodes reachable by following directed edges backward).
+
+        Ancestors include the input nodes themselves.
+
+        Args:
+            `nodes`: Single node or list of nodes (external vertex IDs)
+
+        Returns:
+            Sorted list of all ancestor nodes including the input nodes (external IDs)
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        if len(nodes) == 0:
+            return []
+
+        internal_nodes = [self._vertex_to_idx[n] for n in nodes]
+
+        ancestors_set = set()
+        for idx in internal_nodes:
+            reachable = self.directed.neighborhood(
+                vertices=idx, order=self.num_nodes, mode="in"
+            )
+            ancestors_set.update(reachable)
+
+        return sorted([self._vertex_nums[i] for i in ancestors_set])
+
+    def parents(self, node: int) -> list[int]:
+        """Get parents of a node (using external vertex IDs)."""
+        idx = self._vertex_to_idx[node]
+        parent_indices = np.flatnonzero(self.d_adj[:, idx])
+        return [self._vertex_nums[i] for i in parent_indices]
+
+    def children(self, node: int) -> list[int]:
+        """Get children of a node (using external vertex IDs)."""
+        idx = self._vertex_to_idx[node]
+        child_indices = np.flatnonzero(self.d_adj[idx, :])
+        return [self._vertex_nums[i] for i in child_indices]
+
+    def siblings(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get all siblings (nodes connected by bidirected edges).
+
+        Siblings include the input nodes themselves.
+
+        Args:
+            `nodes`: Single node or list of nodes (external vertex IDs)
+
+        Returns:
+            Sorted list of all sibling nodes including the input nodes (external IDs)
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        if len(nodes) == 0:
+            return []
+
+        internal_nodes = [self._vertex_to_idx[n] for n in nodes]
+        siblings_set = set(internal_nodes)
+
+        for idx in internal_nodes:
+            sibs = self.bidirected.neighborhood(vertices=idx, order=1, mode="all")
+            siblings_set.update(sibs)
+
+        return sorted([self._vertex_nums[i] for i in siblings_set])
+
+    def descendants(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get all descendant nodes (nodes reachable by following directed edges forward).
+
+        Descendants include the input nodes themselves.
+
+        Args:
+            `nodes`: Single node or list of nodes (external vertex IDs)
+
+        Returns:
+            Sorted list of all descendant nodes including the input nodes (external IDs)
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        if len(nodes) == 0:
+            return []
+
+        internal_nodes = [self._vertex_to_idx[n] for n in nodes]
+
+        descendants_set = set()
+        for idx in internal_nodes:
+            reachable = self.directed.neighborhood(
+                vertices=idx, order=self.num_nodes, mode="out"
+            )
+            descendants_set.update(reachable)
+
+        return sorted([self._vertex_nums[i] for i in descendants_set])
 
     def get_trek_system(
         self,
@@ -144,26 +322,58 @@ class MixedGraph:
         A trek is a path that goes backwards along directed edges, then forwards.
 
         Args:
-            from_nodes: The start nodes
-            to_nodes: The end nodes
-            avoid_left_nodes: Nodes to avoid on the left (backward) side of treks
-            avoid_right_nodes: Nodes to avoid on the right (forward) side of treks
-            avoid_left_edges: Directed edges to avoid on left side (as list of (i,j) tuples)
-            avoid_right_edges: Directed edges to avoid on right side (as list of (i,j) tuples)
+            `from_nodes`: The start nodes (external vertex IDs)
+            `to_nodes`: The end nodes (external vertex IDs)
+            `avoid_left_nodes`: Nodes to avoid on the left (external vertex IDs)
+            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
+            `avoid_left_edges`: Directed edges to avoid on left side (external IDs)
+            `avoid_right_edges`: Directed edges to avoid on right side (external IDs)
 
         Returns:
             dict with:
-                - system_exists: True if a trek system of size len(to_nodes) exists
-                - active_from: The subset of from_nodes used in the maximal trek system
+                - `system_exists`: True if a trek system of size len(to_nodes) exists
+                - `active_from`: The subset of from_nodes used (external vertex IDs)
         """
-        return self.internal.get_trek_system(
-            from_nodes,
-            to_nodes,
-            avoid_left_nodes,
-            avoid_right_nodes,
-            avoid_left_edges,
-            avoid_right_edges,
+        # Convert all external IDs to internal indices
+        internal_from = self.to_internal(from_nodes)
+        internal_to = self.to_internal(to_nodes)
+        internal_avoid_left = (
+            self.to_internal(avoid_left_nodes) if avoid_left_nodes else []
         )
+        internal_avoid_right = (
+            self.to_internal(avoid_right_nodes) if avoid_right_nodes else []
+        )
+        internal_avoid_left_edges = (
+            [
+                (self._vertex_to_idx[i], self._vertex_to_idx[j])
+                for i, j in avoid_left_edges
+            ]
+            if avoid_left_edges
+            else []
+        )
+        internal_avoid_right_edges = (
+            [
+                (self._vertex_to_idx[i], self._vertex_to_idx[j])
+                for i, j in avoid_right_edges
+            ]
+            if avoid_right_edges
+            else []
+        )
+
+        result = self.internal.get_trek_system(
+            internal_from,
+            internal_to,
+            internal_avoid_left,
+            internal_avoid_right,
+            internal_avoid_left_edges,
+            internal_avoid_right_edges,
+        )
+
+        # Convert active_from back to external IDs
+        if result["system_exists"] and "active_from" in result:
+            result["active_from"] = self.to_external(result["active_from"])
+
+        return result
 
     def get_half_trek_system(
         self,
@@ -180,22 +390,22 @@ class MixedGraph:
         on the left (backward) side - only on the right (forward) side.
 
         Args:
-            from_nodes: The start nodes
-            to_nodes: The end nodes
-            avoid_left_nodes: Nodes to avoid on the left side
-            avoid_right_nodes: Nodes to avoid on the right side
-            avoid_right_edges: Directed edges to avoid on right side
+            `from_nodes`: The start nodes (external vertex IDs)
+            `to_nodes`: The end nodes (external vertex IDs)
+            `avoid_left_nodes`: Nodes to avoid on the left side (external IDs)
+            `avoid_right_nodes`: Nodes to avoid on the right side (external IDs)
+            `avoid_right_edges`: Directed edges to avoid on right side (external IDs)
 
         Returns:
             dict with:
-                - system_exists: True if a half-trek system exists
-                - active_from: The subset of from_nodes used
+                - `system_exists`: True if a half-trek system exists
+                - `active_from`: The subset of from_nodes used (external IDs)
         """
-        # Get all directed edges to avoid on the left side
+        # Get all directed edges to avoid on the left side (in external IDs)
         avoid_left_edges = [
-            (i, j)
-            for i in range(self.nodes)
-            for j in range(self.nodes)
+            (self._vertex_nums[i], self._vertex_nums[j])
+            for i in range(self.num_nodes)
+            for j in range(self.num_nodes)
             if self.d_adj[i, j] != 0
         ]
 
@@ -221,17 +431,17 @@ class MixedGraph:
         Returns:
             List | None of HTC-identifiable nodes. (0-indexed)
         """
-        siblings = [np.flatnonzero(self.b_adj[i, :]) for i in range(self.nodes)]
-        children = [np.flatnonzero(self.d_adj[i, :]) for i in range(self.nodes)]
-        parents = [np.flatnonzero(self.d_adj[:, i]) for i in range(self.nodes)]
+        siblings = [np.flatnonzero(self.b_adj[i, :]) for i in range(self.num_nodes)]
+        children = [np.flatnonzero(self.d_adj[i, :]) for i in range(self.num_nodes)]
+        parents = [np.flatnonzero(self.d_adj[:, i]) for i in range(self.num_nodes)]
 
         L = 2  # L(i) nodes offset
-        R_IN = 2 + self.nodes  # R(i)-in node offset
-        R_OUT = 2 + 2 * self.nodes  # R(i)-out node offset
-        NODES = 2 + 3 * self.nodes
+        R_IN = 2 + self.num_nodes  # R(i)-in node offset
+        R_OUT = 2 + 2 * self.num_nodes  # R(i)-out node offset
+        NODES = 2 + 3 * self.num_nodes
         cap_init = np.zeros((NODES, NODES), dtype=int)
 
-        for i in range(self.nodes):
+        for i in range(self.num_nodes):
             # edge from L(i) to R(i)-in, and to R(j)-in for all siblings j of i
             cols = np.r_[i, siblings[i]]
             cap_init[L + i, R_IN + cols] = 1
@@ -245,8 +455,8 @@ class MixedGraph:
         # when testing if a set A satisfies the HTC with respect to a node i, need to add
         # (1) edge from source to L(j) for all j in A and (2) edge from R(j)-out to
         # target for all parents j of i
-        dep = self.b_adj + np.eye(self.nodes, dtype=int)
-        for _ in range(self.nodes):
+        dep = self.b_adj + np.eye(self.num_nodes, dtype=int)
+        for _ in range(self.num_nodes):
             dep = dep + (dep @ self.d_adj) > 0
 
         solved = (self.d_adj.sum(axis=0) == 0).astype(int)
@@ -294,19 +504,19 @@ class MixedGraph:
             True if the graph could be determined to be generically non-identifiable,
             False if this test was inconclusive.
         """
-        if self.nodes == 1:
+        if self.num_nodes == 1:
             return False
 
         nonsibs: list[tuple[int, int]] = [
             (idx[0], idx[1]) for idx in np.argwhere(self.b_adj == 0) if idx[0] < idx[1]
         ]
 
-        siblings = [np.flatnonzero(self.b_adj[i, :]) for i in range(self.nodes)]
-        parents = [np.flatnonzero(self.d_adj[:, i]) for i in range(self.nodes)]
-        children = [np.flatnonzero(self.d_adj[i, :]) for i in range(self.nodes)]
+        siblings = [np.flatnonzero(self.b_adj[i, :]) for i in range(self.num_nodes)]
+        parents = [np.flatnonzero(self.d_adj[:, i]) for i in range(self.num_nodes)]
+        children = [np.flatnonzero(self.d_adj[i, :]) for i in range(self.num_nodes)]
 
         N = len(nonsibs)
-        m = self.nodes
+        m = self.num_nodes
 
         R_IN = 2 + N
         R_OUT = 2 + N + m**2
@@ -331,7 +541,7 @@ class MixedGraph:
                     R_IN + j * m + np.r_[i, siblings[i]],
                 ] = 1
 
-        for i in range(self.nodes):
+        for i in range(self.num_nodes):
             # edge from R_i(j)-out to target when j is a parent of i
             cap[R_OUT + i * m + parents[i], 1] = 1
             for j in range(m):
@@ -349,16 +559,198 @@ class MixedGraph:
         result = ig.Graph.maxflow(graph, source=0, target=1).value
         return result < np.sum(self.d_adj)
 
-    #############################################
-    # Ancestral Identifiability
-    # TODO:
+    def strongly_connected_component(self, node: int) -> list[int]:
+        """
+        Get the strongly connected component containing a node.
+
+        Args:
+            node: The node (external vertex ID)
+
+        Returns:
+            List of nodes in the strongly connected component (external IDs)
+        """
+        # Convert to internal index
+        internal_node = self._vertex_to_idx[node]
+
+        # Get all strongly connected components (igraph returns internal indices)
+        scc = self.directed.components(mode="strong")
+
+        # Find which component contains this node
+        for component in scc:
+            if internal_node in component:
+                # Convert back to external IDs
+                return sorted([self._vertex_nums[i] for i in component])
+        return [node]
+
+    def tian_decompose(self) -> list[dict]:
+        """
+        Performs Tian decomposition on the mixed graph.
+
+        Returns:
+            List of dictionaries, each containing:
+                - `internal`: nodes in the bidirected component (external IDs)
+                - `incoming`: nodes that are parents of internal nodes (external IDs)
+                - `topOrder`: topological ordering of internal + incoming nodes (external IDs)
+                - `L`: directed adjacency matrix for this component
+                - `O`: bidirected adjacency matrix for this component
+        """
+        if self.c_components is not None:
+            return self.c_components
+
+        # Find strongly connected components
+        all_nodes = self.nodes
+        scc_components = []
+        remaining_nodes = set(all_nodes)
+
+        while remaining_nodes:
+            node = min(remaining_nodes)
+            component = self.strongly_connected_component(node)  # Returns external IDs
+            scc_components.append(component)
+            remaining_nodes -= set(component)
+
+        num_components = len(scc_components)
+
+        # Create shrunk graph where each SCC is a single node
+        shrunk_L = np.zeros((num_components, num_components), dtype=np.int32)
+        shrunk_O = np.zeros((num_components, num_components), dtype=np.int32)
+
+        for i in range(num_components - 1):
+            for j in range(i + 1, num_components):
+                # Convert to internal indices for matrix indexing
+                comp_i = [self._vertex_to_idx[n] for n in scc_components[i]]
+                comp_j = [self._vertex_to_idx[n] for n in scc_components[j]]
+
+                # Check directed edges
+                if np.any(self.d_adj[np.ix_(comp_i, comp_j)]):
+                    shrunk_L[i, j] = 1
+                if np.any(self.d_adj[np.ix_(comp_j, comp_i)]):
+                    shrunk_L[j, i] = 1
+
+                # Check bidirected edges
+                if np.any(self.b_adj[np.ix_(comp_i, comp_j)]):
+                    shrunk_O[i, j] = 1
+                    shrunk_O[j, i] = 1
+
+        bi_graph = ig.Graph.Adjacency(shrunk_O, mode="undirected")
+        bi_components = bi_graph.components().membership
+
+        shrunk_graph = ig.Graph.Adjacency(shrunk_L, mode="directed")
+        try:
+            shrunk_top_order = shrunk_graph.topological_sorting()
+        except Exception:
+            # If cyclic, just use existing order
+            shrunk_top_order = list(range(num_components))
+
+        global_top_order = []
+        for comp_idx in shrunk_top_order:
+            global_top_order.extend(scc_components[comp_idx])
+
+        num_bi_components = max(bi_components) + 1
+        c_components = []
+
+        for bi_comp_idx in range(num_bi_components):
+            # Get all SCCs in this bidirected component
+            super_nodes = [
+                i
+                for i, membership in enumerate(bi_components)
+                if membership == bi_comp_idx
+            ]
+
+            # Internal nodes: all nodes in SCCs belonging to this bidirected component
+            # Maintain global topological order
+            internal_nodes_set = set()
+            for scc_idx in super_nodes:
+                internal_nodes_set.update(scc_components[scc_idx])
+
+            internal = [n for n in global_top_order if n in internal_nodes_set]
+
+            # Incoming nodes: parents of internal nodes that are not themselves internal
+            # Only include nodes that appear in global_top_order (maintains global order)
+            parents_of_internal = set()
+            for node in internal:
+                node_internal_idx = self._vertex_to_idx[node]
+                parent_indices = np.flatnonzero(self.d_adj[:, node_internal_idx])
+                parents_of_internal.update(
+                    [self._vertex_nums[i] for i in parent_indices]
+                )
+
+            incoming_set = parents_of_internal - internal_nodes_set
+            incoming = [n for n in global_top_order if n in incoming_set]
+
+            # allOrdered: internal + incoming in global topological order
+            all_ordered_set = internal_nodes_set | incoming_set
+            all_ordered = [n for n in global_top_order if n in all_ordered_set]
+
+            # Find positions of internal and incoming in all_ordered
+            internal_indices = [i for i, n in enumerate(all_ordered) if n in internal]
+            incoming_indices = [i for i, n in enumerate(all_ordered) if n in incoming]
+
+            comp_size = len(all_ordered)
+            new_L = np.zeros((comp_size, comp_size), dtype=np.int32)
+            new_O = np.zeros((comp_size, comp_size), dtype=np.int32)
+
+            # Extract submatrices from original graph
+            # newL[c(indsInt, indsInc), indsInt] <- L[c(internal, incoming), internal]
+            all_rows = internal + incoming
+            all_rows_internal = [self._vertex_to_idx[n] for n in all_rows]
+            internal_cols_internal = [self._vertex_to_idx[n] for n in internal]
+
+            new_L[np.ix_(internal_indices + incoming_indices, internal_indices)] = (
+                self.d_adj[np.ix_(all_rows_internal, internal_cols_internal)]
+            )
+
+            # newO[indsInt, indsInt] <- O[internal, internal]
+            internal_internal = [self._vertex_to_idx[n] for n in internal]
+            new_O[np.ix_(internal_indices, internal_indices)] = self.b_adj[
+                np.ix_(internal_internal, internal_internal)
+            ]
+
+            c_components.append(
+                {
+                    "internal": internal,
+                    "incoming": incoming,
+                    "topOrder": all_ordered,
+                    "L": new_L,
+                    "O": new_O,
+                }
+            )
+
+        self.c_components = c_components
+        return c_components
+
+    def tian_component(self, node: int) -> dict:
+        """
+        Returns the Tian c-component containing a specific node.
+
+        Args:
+            `node`: The node to find the c-component for (external vertex ID)
+
+        Returns:
+            Dictionary with:
+                - internal, incoming, topOrder: lists of external vertex IDs
+                - L, O: adjacency matrices (indexed 0 to len(topOrder)-1)
+
+        Raises:
+            ValueError: If node is not found in any component
+        """
+        c_components = self.tian_decompose()
+        for comp in c_components:
+            if node in comp["internal"]:
+                return comp
+
+        raise ValueError(f"No Tian component found for node {node}")
 
     #############################################
     # Global Identifiability
 
     def bidirected_components(self) -> list[MixedGraph]:
         comps: ig.VertexClustering = self.bidirected.components()
-        return [self.induced_subgraph(cluster) for cluster in comps if len(cluster) > 1]
+        # igraph returns internal indices, convert to external IDs
+        return [
+            self.induced_subgraph(self.to_external(cluster))
+            for cluster in comps
+            if len(cluster) > 1
+        ]
 
     def global_id(self) -> bool:
         if not self.directed.is_dag():
@@ -375,11 +767,13 @@ class MixedGraph:
                 return False
             else:
                 for s in sinks:
-                    ancestors = comp.directed.neighborhood(
-                        vertices=s, order=comp.nodes, mode="in"
+                    # igraph.neighborhood returns internal indices
+                    ancestors_internal = comp.directed.neighborhood(
+                        vertices=s, order=comp.num_nodes, mode="in"
                     )
-                    if len(ancestors) > 1:
-                        ag = comp.induced_subgraph(ancestors)
+                    if len(ancestors_internal) > 1:
+                        ancestors_external = comp.to_external(ancestors_internal)
+                        ag = comp.induced_subgraph(ancestors_external)
                         comps.extend(ag.bidirected_components())
 
         return True
