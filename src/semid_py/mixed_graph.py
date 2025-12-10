@@ -564,22 +564,19 @@ class MixedGraph:
         Get the strongly connected component containing a node.
 
         Args:
-            node: The node (external vertex ID)
+            `node`: The node (external vertex ID)
 
         Returns:
             List of nodes in the strongly connected component (external IDs)
         """
-        # Convert to internal index
         internal_node = self._vertex_to_idx[node]
 
-        # Get all strongly connected components (igraph returns internal indices)
         scc = self.directed.components(mode="strong")
 
-        # Find which component contains this node
         for component in scc:
             if internal_node in component:
-                # Convert back to external IDs
                 return sorted([self._vertex_nums[i] for i in component])
+
         return [node]
 
     def tian_decompose(self) -> list[dict]:
@@ -738,7 +735,9 @@ class MixedGraph:
             if node in comp["internal"]:
                 return comp
 
-        raise ValueError(f"No Tian component found for node {node}")
+        raise ValueError(
+            f"No Tian component found for node {node}, was the node mispecified?"
+        )
 
     #############################################
     # Global Identifiability
