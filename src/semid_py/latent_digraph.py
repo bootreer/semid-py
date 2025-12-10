@@ -232,11 +232,11 @@ class LatentDigraph:
         A trek is a path that goes backwards along directed edges, then forwards.
 
         Args:
-            nodes: Nodes to start from
-            avoid_left_nodes: Nodes to avoid on the left (backward) side
-            avoid_right_nodes: Nodes to avoid on the right (forward) side
-            include_observed: Whether to include observed nodes in result
-            include_latents: Whether to include latent nodes in result
+            `nodes`: Nodes to start from
+            `avoid_left_nodes`: Nodes to avoid on the left (backward) side
+            `avoid_right_nodes`: Nodes to avoid on the right (forward) side
+            `include_observed`: Whether to include observed nodes in result
+            `include_latents`: Whether to include latent nodes in result
 
         Returns:
             List of trek-reachable node indices
@@ -384,17 +384,17 @@ class LatentDigraph:
         This uses max-flow to find the maximum number of vertex-disjoint treks.
 
         Args:
-            from_nodes: Source nodes for treks (left side)
-            to_nodes: Target nodes for treks (right side)
-            avoid_left_nodes: Nodes that cannot appear on left (backward) side
-            avoid_right_nodes: Nodes that cannot appear on right (forward) side
-            avoid_left_edges: Edges (i,j) that cannot be traversed backward (j->i)
-            avoid_right_edges: Edges (i,j) that cannot be traversed forward (i->j)
+            `from_nodes`: Source nodes for treks (left side)
+            `to_nodes`: Target nodes for treks (right side)
+            `avoid_left_nodes`: Nodes that cannot appear on left (backward) side
+            `avoid_right_nodes`: Nodes that cannot appear on right (forward) side
+            `avoid_left_edges`: Edges (i,j) that cannot be traversed backward (j->i)
+            `avoid_right_edges`: Edges (i,j) that cannot be traversed forward (i->j)
 
         Returns:
             dict with:
-                - system_exists: True if a trek system of size len(to_nodes) exists
-                - active_from: Subset of from_nodes used in the maximal trek system
+                - `system_exists`: True if a trek system of size len(to_nodes) exists
+                - `active_from`: Subset of from_nodes used in the maximal trek system
         """
         m = self.num_nodes
         cap, SOURCE, SINK = self._create_trek_flow_graph()
