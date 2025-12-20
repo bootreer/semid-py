@@ -6,8 +6,8 @@ import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py import utils
-from semid_py.utils import IdentifierResult, LfhtcIdentifyStepResult, TrekSystem
+from semid import utils
+from semid.utils import IdentifierResult, LfhtcIdentifyStepResult, TrekSystem
 
 
 class LatentDigraph:

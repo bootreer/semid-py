@@ -5,8 +5,8 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py.mixed_graph import MixedGraph
-from semid_py.utils import CComponent, IdentifierResult, IdentifyStepResult
+from semid.mixed_graph import MixedGraph
+from semid.utils import CComponent, IdentifierResult, IdentifyStepResult
 
 from .base import tian_sigma_for_component
 from .types import GenericIDResult

@@ -6,8 +6,8 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py.mixed_graph import MixedGraph
-from semid_py.utils import IdentifierResult, IdentifyStepResult
+from semid.mixed_graph import MixedGraph
+from semid.utils import IdentifierResult, IdentifyStepResult
 
 from .types import GenericIDResult
 from .core import general_generic_id

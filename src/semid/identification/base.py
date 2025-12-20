@@ -5,7 +5,7 @@ from typing import Callable
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py.utils import CComponent, IdentifierResult, validate_matrices
+from semid.utils import CComponent, IdentifierResult, validate_matrices
 
 
 def tian_sigma_for_component(

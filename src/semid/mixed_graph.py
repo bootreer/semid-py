@@ -4,9 +4,9 @@ import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py import utils
-from semid_py.latent_digraph import LatentDigraph
-from semid_py.utils import CComponent, TrekSystem
+from semid import utils
+from semid.latent_digraph import LatentDigraph
+from semid.utils import CComponent, TrekSystem
 
 
 # NOTE: 0-indexed unlike in R

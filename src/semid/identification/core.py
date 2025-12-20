@@ -4,7 +4,7 @@ from typing import Callable
 
 import numpy as np
 
-from semid_py.mixed_graph import MixedGraph
+from semid.mixed_graph import MixedGraph
 
 from .base import (
     create_identifier_base_case,
@@ -167,7 +167,7 @@ def semid(
 
     Example:
         >>> import numpy as np
-        >>> from semid_py import MixedGraph, semid
+        >>> from semid import MixedGraph, semid
         >>> # Create Verma graph
         >>> L = np.array([[0, 1, 1, 0],
         ...               [0, 0, 1, 0],

@@ -1,5 +1,5 @@
 {
-  description = "semid-py uv2nix";
+  description = "semid uv2nix";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -69,7 +69,7 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           pythonSet = pythonSets.${system}.overrideScope editableOverlay;
-          virtualenv = pythonSet.mkVirtualEnv "semid-py" workspace.deps.all;
+          virtualenv = pythonSet.mkVirtualEnv "semid" workspace.deps.all;
         in
         {
           default = pkgs.mkShell {
@@ -100,7 +100,7 @@
       );
 
       packages = forAllSystems (system: {
-        default = pythonSets.${system}.mkVirtualEnv "semid-py" workspace.deps.default;
+        default = pythonSets.${system}.mkVirtualEnv "semid" workspace.deps.default;
       });
     };
 }

@@ -6,8 +6,8 @@ from typing import Callable, Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from semid_py.mixed_graph import MixedGraph
-from semid_py.utils import IdentifierResult
+from semid.mixed_graph import MixedGraph
+from semid.utils import IdentifierResult
 
 
 @dataclass
