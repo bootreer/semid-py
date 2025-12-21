@@ -6,10 +6,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
-from semid.utils import CComponent, IdentifierResult, IdentifyStepResult
+from semid.utils import CComponent
 
 from .base import tian_sigma_for_component
-from .types import GenericIDResult
+from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
 from .core import general_generic_id
 
 

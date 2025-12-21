@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 
 from semid import utils
 from semid.latent_digraph import LatentDigraph
-from semid.utils import CComponent, TrekSystem
+from semid.utils import BiNodesResult, CComponent, TrekSystem
 
 
 # NOTE: 0-indexed unlike in R
@@ -781,7 +781,7 @@ class MixedGraph:
 
         return True
 
-    def get_mixed_comp(self, sub_nodes: list[int], node: int) -> dict:
+    def get_mixed_comp(self, sub_nodes: list[int], node: int) -> BiNodesResult:
         if node in sub_nodes:
             raise ValueError(
                 f"Node {node} cannot be in sub_nodes for mixed component computation"
@@ -806,7 +806,7 @@ class MixedGraph:
         parents = [parent for n in reachable for parent in self.parents(n)]
         incoming = (set(parents) - reachable) & avoid_set
 
-        return {"biNodes": parents, "inNodes": incoming}
+        return BiNodesResult(parents, incoming)
 
     def ancestral_id(self):
         half_trek_sources = [

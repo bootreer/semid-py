@@ -1,5 +1,9 @@
 from .identification import (
     GenericIDResult,
+    IdentifierResult,
+    IdentifyStepResult,
+    LfhtcIdentifyStepResult,
+    LfhtcIDResult,
     SEMIDResult,
     ancestral_id,
     ancestral_identify_step,
@@ -9,18 +13,17 @@ from .identification import (
     general_generic_id,
     htc_id,
     htc_identify_step,
+    lf_htc_id,
+    lf_htc_identify_step,
     semid,
     trek_sep_id,
     trek_separation_identify_step,
 )
-from .latent_digraph import LatentDigraph, LfhtcIDResult, lf_htc_id, lfhtc_identify_step
+from .latent_digraph import LatentDigraph
 from .mixed_graph import MixedGraph
 from .utils import (
     BiNodesResult,
     CComponent,
-    IdentifierResult,
-    IdentifyStepResult,
-    LfhtcIdentifyStepResult,
     TrekSystem,
 )
 
@@ -47,6 +50,6 @@ __all__ = [
     trek_sep_id,
     edgewise_ts_id,
     lf_htc_id,
-    lfhtc_identify_step,
+    lf_htc_identify_step,
     semid,
 ]

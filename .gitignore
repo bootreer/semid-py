@@ -5,11 +5,11 @@ build/
 dist/
 wheels/
 *.egg-info
+.*_cache/
 
 # Virtual environments
 .venv
 
-SEMID/
 **/.DS_Store
 .coverage
 main.py

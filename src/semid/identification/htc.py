@@ -6,9 +6,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
-from semid.utils import IdentifierResult, IdentifyStepResult
 
-from .types import GenericIDResult
+from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
 
 
 def create_htc_identifier(
@@ -96,7 +95,6 @@ def htc_identify_step(
     # Find nodes that are already solved (no unsolved parents)
     solved_nodes = [i for i in all_nodes if len(unsolved_parents[i]) == 0]
 
-    # TODO: frozen dict in python 3.15
     for i in all_nodes:
         if i in solved_nodes:
             continue
@@ -131,11 +129,9 @@ def htc_identify_step(
                 if parent in unsolved_parents[i]:
                     identified_edges.append((parent, i))
 
-            # Update solved/unsolved
             solved_parents[i] = node_parents
             unsolved_parents[i] = []
 
-            # Create HTC identifier for this node
             active_from = half_trek_result.active_from
             # htr_sources are nodes that are both in active_from AND half-trek-reachable from i
             htr_sources = [node for node in active_from if node in htr_from_node]

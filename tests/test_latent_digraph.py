@@ -28,12 +28,12 @@ def test_get_trek_system(test_case):
         expected_exists = trek_test["expected_exists"]
         expected_active = trek_test["expected_active"]
 
-        assert result["system_exists"] == expected_exists, (
+        assert result.system_exists == expected_exists, (
             f"Trek system existence mismatch for from={from_nodes}, to={to_nodes}, "
             f"avoid_left={avoid_left}, avoid_right={avoid_right}"
         )
 
-        assert sorted(result["active_from"]) == sorted(expected_active), (
+        assert sorted(result.active_from) == sorted(expected_active), (
             f"Active nodes mismatch for from={from_nodes}, to={to_nodes}, "
             f"avoid_left={avoid_left}, avoid_right={avoid_right}"
         )

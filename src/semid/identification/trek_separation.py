@@ -7,9 +7,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
-from semid.utils import IdentifierResult, IdentifyStepResult
 
-from .types import GenericIDResult
+from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
 from .core import general_generic_id
 
 

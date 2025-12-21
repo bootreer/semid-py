@@ -7,9 +7,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
-from semid.utils import IdentifierResult, IdentifyStepResult
 
-from .types import GenericIDResult
+from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
 
 from .htc import htc_identify_step
 from .core import general_generic_id
@@ -202,7 +201,6 @@ def edgewise_identify_step(
                 reachable |= set(mixed_graph.tr_from([unsolved_parent]))
             htr_from_allowed_or_tr_from_unsolved.append(reachable)
 
-        # Try to find a valid subset using helper function
         result = _find_edgewise_subset(
             mixed_graph,
             i,

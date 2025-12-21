@@ -3,8 +3,11 @@ from typing import Optional
 
 import numpy as np
 from numpy._typing import NDArray
+from numpy.random import uniform
 
-from semid_py import LatentDigraph, MixedGraph
+from semid import LatentDigraph, MixedGraph
+
+import igraph as ig
 
 
 @dataclass
@@ -177,11 +180,11 @@ class LatentDigraphTestCase:
     """Number of observed nodes (None means all observed)"""
 
     # Expected results for trek system tests
-    trek_system_tests: list[dict] = None
+    trek_system_tests: list[dict] | None = None
     """List of trek system test cases with from_nodes, to_nodes, and expected results"""
 
     # Expected results for tr_from tests
-    tr_from_tests: list[dict] = None
+    tr_from_tests: list[dict] | None = None
     """List of tr_from test cases"""
 
     def __post_init__(self):
@@ -374,3 +377,74 @@ LATENT_DIGRAPH_EXAMPLES: list[LatentDigraphTestCase] = [
         ],
     ),
 ]
+
+
+# Helper function for testing parameter identification
+def random_identification_test(identifier, L, O, solved_parents, seed=None): # noqa: E741
+    if seed is not None:
+        np.random.seed(seed)
+
+    n = L.shape[0]
+
+    L1 = L.astype(float) * np.random.uniform(0.1, 1.0, size=(n, n))
+
+    rand_matrix = np.random.uniform(0.1, 1.0, size=(n, n))
+    O1 = (np.eye(n) + O.astype(float)) * rand_matrix
+    O1 = O1 + O1.T
+
+    I_minus_L = np.eye(n) - L1
+    Sigma = np.linalg.solve(
+        I_minus_L.T, O1 @ np.linalg.inv(I_minus_L)
+    )
+
+    identified = identifier(Sigma)
+    L_res = identified.Lambda
+    O_res = identified.Omega
+
+    for i in range(n):
+        for parent in solved_parents[i]:
+            assert not np.isnan(
+                L_res[parent, i]
+            ), f"Lambda[{parent},{i}] should be identified but is NaN"
+
+    L_diff = np.abs(L_res - L1)
+    assert np.all(
+        L_diff[~np.isnan(L_res)] < 1e-6
+    ), f"Lambda recovery failed, max diff: {np.nanmax(L_diff)}"
+
+    O_diff = np.abs(O_res - O1)
+    assert np.all(
+        O_diff[~np.isnan(O_res)] < 1e-6
+    ), f"Omega recovery failed, max diff: {np.nanmax(O_diff)}"
+
+
+# Functions for generating random adjacency matrices
+def random_connected(num_nodes: int, p: float) -> NDArray:
+    n = num_nodes * (num_nodes - 1) // 2
+    weights = uniform(size=n)
+
+    span_tree = ig.Graph.Full(num_nodes).spanning_tree(weights, return_tree=True)
+
+    adj = np.array(span_tree.get_adjacency().data, dtype=bool)
+    upper_tri = np.triu(np.ones((num_nodes, num_nodes), dtype=bool), k=1)
+    rand = np.random.random(size=(num_nodes, num_nodes)) < p
+
+    adj |= (upper_tri & rand)
+    adj |= adj.T
+    return adj.astype(np.int32)
+
+def random_directed_acyclic(num_nodes: int, p: float) -> NDArray:
+    upper_tri = np.triu(np.ones((num_nodes, num_nodes), dtype=bool), k=1)
+    rand = np.random.random(size=(num_nodes, num_nodes)) < p
+    return (upper_tri & rand).astype(np.int32)
+
+
+def random_directed(num_nodes: int, p: float) -> NDArray:
+    not_diag = ~np.eye(num_nodes, dtype=bool)
+    rand = np.random.random(size=(num_nodes, num_nodes)) < p
+    return (not_diag & rand).astype(np.int32)
+
+def random_undirected(num_nodes: int, p: float) -> NDArray:
+    mat = (uniform(size=(num_nodes, num_nodes)) < p).astype(np.int32)
+    mat = np.triu(mat, k=1)
+    return mat + mat.T

@@ -1,9 +1,9 @@
 import numpy as np
 import pytest
 
-from semid_py import MixedGraph
+from semid import MixedGraph
 
-from .conftest import GRAPH_EXAMPLES, Graph
+from tests.conftest import GRAPH_EXAMPLES, Graph
 
 
 @pytest.mark.parametrize("graph", GRAPH_EXAMPLES)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -48,54 +48,11 @@ def reshape_arr(
 
 
 @dataclass
-class IdentifierResult:
-    """Result from an identifier function with Lambda and Omega matrices."""
-
-    Lambda: NDArray[np.float64]
-    Omega: NDArray[np.float64]
-
-
-@dataclass
 class TrekSystem:
     """Result from trek system computation."""
 
     system_exists: bool
     active_from: list[int]
-
-
-@dataclass
-class IdentifyStepResult:
-    """
-    Result from an identification step.
-
-    Attributes:
-        identified_edges: Newly identified edges as (parent, child) tuples
-        unsolved_parents: Updated list of unsolved parent edges for each node
-        solved_parents: Updated list of solved parent edges for each node
-        identifier: Updated identifier function
-    """
-
-    identified_edges: list[tuple[int, int]]
-    unsolved_parents: list[list[int]]
-    solved_parents: list[list[int]]
-    identifier: Callable[[NDArray], "IdentifierResult"]
-
-
-@dataclass
-class LfhtcIdentifyStepResult:
-    """
-    Result from a latent-factor HTC identification step.
-
-    Extends IdentifyStepResult with additional latent-factor specific fields.
-    """
-
-    identified_edges: list[tuple[int, int]]
-    unsolved_parents: list[list[int]]
-    solved_parents: list[list[int]]
-    identifier: Callable[[NDArray], "IdentifierResult"]
-    active_froms: list[list[int]]
-    Zs: list[list[int]]
-    Ls: list[list[int]]
 
 
 @dataclass
