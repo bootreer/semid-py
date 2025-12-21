@@ -808,36 +808,3 @@ class MixedGraph:
 
         return BiNodesResult(parents, incoming)
 
-    def ancestral_id(self):
-        half_trek_sources = [
-            self.siblings(self.ancestors(i)) for i in self._vertex_nums
-        ]
-
-        dep = self.b_adj + np.eye(self.num_nodes, dtype=int)
-        for _ in range(self.num_nodes):
-            dep = dep + (dep @ self.d_adj) > 0
-
-        solved = (self.d_adj.sum(axis=0) == 0).astype(int)
-        count: int = solved.sum()
-
-        change = True
-        while change:
-            change = False
-
-            for i in np.flatnonzero(solved == 0):
-                a = np.union1d(
-                    np.flatnonzero(solved > 0), np.flatnonzero(dep[i, :] == 0)
-                )
-                b = np.r_[i, half_trek_sources[i]]
-                A = np.setdiff1d(a, b)
-
-                mixed_comps = self.get_mixed_comp(self.ancestors(np.r_[i, A]), i)
-
-                _ = mixed_comps
-                pass
-
-        if count == 0:
-            return None
-
-        num_unsolved = np.sum(solved == 0)
-        return list(np.argsort(solved)[num_unsolved:])

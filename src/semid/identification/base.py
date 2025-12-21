@@ -35,45 +35,44 @@ def tian_sigma_for_component(
         return Sigma[np.ix_(top_order, top_order)]
 
     n = len(top_order)
+    internal_set = set(internal)
+    new_sigma_inv = np.zeros((n, n))
 
-    # The transformation is: condition on incoming nodes
-    # Sigma_new = Sigma_internal - Sigma_internal,incoming @ Sigma_incoming^{-1} @ Sigma_incoming,internal
-    internal_indices_in_toporder = [
-        i for i, node in enumerate(top_order) if node in internal
-    ]
-    incoming_indices_in_toporder = [
-        i for i, node in enumerate(top_order) if node in incoming
-    ]
+    for j, node in enumerate(top_order):
+        if node in internal_set:
+            if j == 0:
+                new_sigma_inv[j, j] += 1 / Sigma[node, node]
+            else:
+                # Get indices of previous nodes in topological order
+                prev_nodes = top_order[:j]
 
-    # Extract relevant submatrices from original Sigma
-    Sigma_ordered = Sigma[np.ix_(top_order, top_order)]
+                Sigma_prev = Sigma[np.ix_(prev_nodes, prev_nodes)]
+                Sigma_prev_inv = np.linalg.inv(Sigma_prev)
 
-    Sigma_internal_internal = Sigma_ordered[
-        np.ix_(internal_indices_in_toporder, internal_indices_in_toporder)
-    ]
-    Sigma_internal_incoming = Sigma_ordered[
-        np.ix_(internal_indices_in_toporder, incoming_indices_in_toporder)
-    ]
-    Sigma_incoming_incoming = Sigma_ordered[
-        np.ix_(incoming_indices_in_toporder, incoming_indices_in_toporder)
-    ]
+                # Schur complement: Sigma[node,node] - Sigma[node,prev] @ Sigma_prev^-1 @ Sigma[prev,node]
+                schur = (
+                    Sigma[node, node]
+                    - Sigma[node, prev_nodes] @ Sigma_prev_inv @ Sigma[prev_nodes, node]
+                )
+                schur_inv = 1 / schur
 
-    try:
-        Sigma_incoming_inv = np.linalg.inv(Sigma_incoming_incoming)
-        conditional_cov = (
-            Sigma_internal_internal
-            - Sigma_internal_incoming @ Sigma_incoming_inv @ Sigma_internal_incoming.T
-        )
+                # Update precision matrix
+                new_sigma_inv[j, j] += schur_inv
 
-        # Build the new Sigma with internals having conditional covariance
-        # and incoming having identity covariance (treated as exogenous)
-        new_sigma = np.eye(n)
-        new_sigma[
-            np.ix_(internal_indices_in_toporder, internal_indices_in_toporder)
-        ] = conditional_cov
-    except np.linalg.LinAlgError:
-        # If singular, just return ordered Sigma
-        new_sigma = Sigma_ordered
+                # Compute mean contribution
+                mean_mat = Sigma_prev_inv @ Sigma[prev_nodes, node] * schur_inv
+
+                # Update off-diagonal terms
+                new_sigma_inv[j, :j] -= mean_mat
+                new_sigma_inv[:j, j] = new_sigma_inv[j, :j]
+
+                new_sigma_inv[:j, :j] += np.outer(
+                    Sigma_prev_inv @ Sigma[prev_nodes, node], mean_mat
+                )
+
+    incoming_indices = [i for i, node in enumerate(top_order) if node in incoming]
+    new_sigma_inv[np.ix_(incoming_indices, incoming_indices)] += np.eye(len(incoming))
+    new_sigma = np.linalg.inv(new_sigma_inv)
 
     return new_sigma
 
