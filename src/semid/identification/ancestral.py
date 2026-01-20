@@ -81,9 +81,10 @@ def create_ancestral_identifier(
         Lambda_anc_tian = Lambda_anc_tian[np.ix_(top_order_anc, top_order_anc)]
 
         SigmaMinus = Sigma_anc_tian.copy()
-        for source in htr_sources_tian:
-            SigmaMinus[source, :] = (
-                Sigma_anc_tian[source, :] - Lambda_anc_tian[:, source] @ Sigma_anc_tian
+        if htr_sources_tian:
+            SigmaMinus[htr_sources_tian, :] = (
+                Sigma_anc_tian[htr_sources_tian, :]
+                - Lambda_anc_tian[:, htr_sources_tian].T @ Sigma_anc_tian
             )
 
         try:

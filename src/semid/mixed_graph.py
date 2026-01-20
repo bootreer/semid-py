@@ -24,6 +24,7 @@ class MixedGraph:
     """Internal representation as LatentDigraph with latent confounders"""
 
     c_components: list[CComponent] | None = None
+    _tian_node_map: dict[int, CComponent] | None = None
 
     _vertex_nums: list[int]
 
@@ -719,6 +720,12 @@ class MixedGraph:
             )
 
         self.c_components = c_components
+        # Cache node to component mapping for O(1) lookup
+        self._tian_node_map = {}
+        for comp in c_components:
+            for node in comp.internal:
+                self._tian_node_map[node] = comp
+
         return c_components
 
     def tian_component(self, node: int) -> CComponent:
@@ -734,10 +741,12 @@ class MixedGraph:
         Raises:
             ValueError: If node is not found in any component
         """
-        c_components = self.tian_decompose()
-        for comp in c_components:
-            if node in comp.internal:
-                return comp
+        if self.c_components is None or self._tian_node_map is None:
+            self.tian_decompose()
+
+        # pyrefly: ignore
+        if self._tian_node_map and node in self._tian_node_map:
+            return self._tian_node_map[node]
 
         raise ValueError(
             f"No Tian component found for node {node}, was the node mispecified?"

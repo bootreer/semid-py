@@ -218,7 +218,12 @@ def joint_flow(
     # Bounds: all flows non-negative
     bounds = [(0, None) for _ in range(num_edges_g + num_edges_g_sub)]
 
-    # Solve LP (note: integer parameter currently unused as scipy doesn't support MILP with highs)
+    # 0 = continuous, 1 = integer
+    integrality = None
+    if integer:
+        integrality = np.ones(num_edges_g + num_edges_g_sub, dtype=int)
+
+    # Solve LP
     result = linprog(
         c,
         A_ub=A_ub,
@@ -227,6 +232,7 @@ def joint_flow(
         b_eq=b_eq,
         bounds=bounds,
         method="highs",
+        integrality=integrality,
     )
 
     return {

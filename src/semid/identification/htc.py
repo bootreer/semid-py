@@ -40,9 +40,10 @@ def create_htc_identifier(
         Omega = identified_params.Omega.copy()
 
         SigmaMinus = Sigma.copy()
-        for source in htr_sources:
-            # Remove contribution: Sigma[source, :] - Lambda[:, source]^T @ Sigma
-            SigmaMinus[source, :] = Sigma[source, :] - Lambda[:, source] @ Sigma
+        if htr_sources:
+            SigmaMinus[htr_sources, :] = (
+                Sigma[htr_sources, :] - Lambda[:, htr_sources].T @ Sigma
+            )
 
         # solving SigmaMinus[sources, targets] @ x = SigmaMinus[sources, node] for Lambda[targets, node]
         try:

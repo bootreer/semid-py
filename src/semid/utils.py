@@ -41,7 +41,7 @@ def reshape_arr(
         return np.array(matrix, dtype=np.int32).reshape((nodes, nodes))
 
 
-@dataclass
+@dataclass(slots=True)
 class TrekSystem:
     """Result from trek system computation."""
 
@@ -49,7 +49,7 @@ class TrekSystem:
     active_from: list[int]
 
 
-@dataclass
+@dataclass(slots=True)
 class BiNodesResult:
     """Result containing bidirected and incoming nodes."""
 
@@ -57,7 +57,7 @@ class BiNodesResult:
     in_nodes: list[int]
 
 
-@dataclass
+@dataclass(slots=True)
 class CComponent:
     """
     A c-component from Tian decomposition.

@@ -259,36 +259,32 @@ class LatentDigraph:
             self._tr_graph = self._create_tr_graph()
 
         m = self.num_nodes
+        from collections import deque
 
         # Build set of avoided nodes in trek graph (2m nodes total)
         avoid_set = set(avoid_left_nodes) | set(n + m for n in avoid_right_nodes)
 
-        # Manual BFS that respects avoid constraints (python-igraph lacks 'restricted' param)
-        # We cannot traverse THROUGH avoided nodes
-        reachable = set()
-        for start_node in nodes:
-            if start_node in avoid_set:
-                continue
+        # Use a single BFS traversal for efficiency
+        # Filter valid start nodes that are not in the avoid set
+        valid_starts = [n for n in nodes if n not in avoid_set]
+        
+        queue = deque(valid_starts)
+        visited = set(valid_starts)
+        
+        while queue:
+            current = queue.popleft()
 
-            queue = [start_node]
-            visited = {start_node}
-            reachable.add(start_node)
-
-            while queue:
-                current = queue.pop(0)
-
-                # Get outgoing neighbors
-                neighbors = self._tr_graph.neighbors(current, mode="out")
-                for neighbor in neighbors:
-                    if neighbor not in visited and neighbor not in avoid_set:
-                        visited.add(neighbor)
-                        reachable.add(neighbor)
-                        queue.append(neighbor)
+            # Get outgoing neighbors
+            neighbors = self._tr_graph.neighbors(current, mode="out")
+            for neighbor in neighbors:
+                if neighbor not in visited and neighbor not in avoid_set:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
 
         # Convert back from trek graph node indices to original graph indices
         # Nodes 0..m-1 map to themselves, nodes m..2m-1 map to 0..m-1
         original_nodes = set()
-        for tr_node in reachable:
+        for tr_node in visited:
             if tr_node >= m:
                 original_nodes.add(tr_node - m)
             else:

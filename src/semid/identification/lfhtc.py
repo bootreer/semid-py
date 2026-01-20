@@ -11,11 +11,8 @@ from .types import IdentifierResult, LfhtcIdentifyStepResult, LfhtcIDResult
 
 def subsets_of_size(items: list, size: int):
     """Generate all subsets of a given size."""
-    if size == 0:
-        yield []
-    else:
-        for subset in combinations(items, size):
-            yield list(subset)
+    for subset in combinations(items, size):
+        yield list(subset)
 
 
 def validate_latent_nodes_are_sources(graph: LatentDigraph) -> None:

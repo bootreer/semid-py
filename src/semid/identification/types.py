@@ -10,7 +10,7 @@ from semid.mixed_graph import MixedGraph
 from semid.latent_digraph import LatentDigraph
 
 
-@dataclass
+@dataclass(slots=True)
 class GenericIDResult:
     """
     Result from generic identification algorithms.
@@ -103,7 +103,7 @@ class GenericIDResult:
         return "\n".join(lines)
 
 
-@dataclass
+@dataclass(slots=True)
 class SEMIDResult:
     """
     Complete SEMID result including global and generic identifiability.
@@ -154,7 +154,7 @@ class SEMIDResult:
         return "\n".join(lines)
 
 
-@dataclass
+@dataclass(slots=True)
 class IdentifierResult:
     """Result from an identifier function with Lambda and Omega matrices."""
 
@@ -162,7 +162,7 @@ class IdentifierResult:
     Omega: NDArray[np.float64]
 
 
-@dataclass
+@dataclass(slots=True)
 class IdentifyStepResult:
     """
     Result from an identification step.
@@ -180,7 +180,7 @@ class IdentifyStepResult:
     identifier: Callable[[NDArray], IdentifierResult]
 
 
-@dataclass
+@dataclass(slots=True)
 class LfhtcIDResult:
     """
     Result from latent-factor HTC identification.
@@ -244,7 +244,7 @@ class LfhtcIDResult:
         return "\n".join(lines)
 
 
-@dataclass
+@dataclass(slots=True)
 class LfhtcIdentifyStepResult:
     """
     Result from a latent-factor HTC identification step.
