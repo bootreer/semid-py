@@ -47,28 +47,24 @@ def tian_sigma_for_component(
                 prev_nodes = top_order[:j]
 
                 Sigma_prev = Sigma[np.ix_(prev_nodes, prev_nodes)]
-                Sigma_prev_inv = np.linalg.inv(Sigma_prev)
+                # Solve: Sigma_prev @ x = Sigma[prev_nodes, node]
+                x = np.linalg.solve(Sigma_prev, Sigma[prev_nodes, node])
 
                 # Schur complement: Sigma[node,node] - Sigma[node,prev] @ Sigma_prev^-1 @ Sigma[prev,node]
-                schur = (
-                    Sigma[node, node]
-                    - Sigma[node, prev_nodes] @ Sigma_prev_inv @ Sigma[prev_nodes, node]
-                )
+                schur = Sigma[node, node] - Sigma[node, prev_nodes] @ x
                 schur_inv = 1 / schur
 
                 # Update precision matrix
                 new_sigma_inv[j, j] += schur_inv
 
                 # Compute mean contribution
-                mean_mat = Sigma_prev_inv @ Sigma[prev_nodes, node] * schur_inv
+                mean_mat = x * schur_inv
 
                 # Update off-diagonal terms
                 new_sigma_inv[j, :j] -= mean_mat
                 new_sigma_inv[:j, j] = new_sigma_inv[j, :j]
 
-                new_sigma_inv[:j, :j] += np.outer(
-                    Sigma_prev_inv @ Sigma[prev_nodes, node], mean_mat
-                )
+                new_sigma_inv[:j, :j] += np.outer(x, mean_mat)
 
     incoming_indices = [i for i, node in enumerate(top_order) if node in incoming]
     new_sigma_inv[np.ix_(incoming_indices, incoming_indices)] += np.eye(len(incoming))

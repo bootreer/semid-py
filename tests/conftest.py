@@ -9,7 +9,6 @@ from semid import LatentDigraph, MixedGraph
 
 import igraph as ig
 
-
 # Common test graphs
 VERMA_L = np.array(
     [[0, 1, 1, 0], [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, 0, 0]], dtype=np.int32
@@ -184,8 +183,82 @@ GRAPH_EXAMPLES: list[Graph] = [
     # Edges: 0->1, 0->2, 0->5, 1->2, 1->3, 1->4, 1->5, 2->3, 3->4
     # Bidirected: 0-5, 0-3, 1-2, 1-4, 1-5
     Graph(
-        [0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [
+            0,
+            1,
+            1,
+            0,
+            0,
+            1,
+            0,
+            0,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+        [
+            0,
+            0,
+            0,
+            1,
+            0,
+            1,
+            0,
+            0,
+            1,
+            0,
+            1,
+            1,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
         (6, 6),
         -1,
         0,
@@ -582,9 +655,9 @@ def random_identification_test(identifier, L, O, solved_parents, seed=None): # n
     O1 = O1 + O1.T
 
     I_minus_L = np.eye(n) - L1
-    Sigma = np.linalg.solve(
-        I_minus_L.T, O1 @ np.linalg.inv(I_minus_L)
-    )
+    # Compute Sigma = (I-L)^{-T} @ O1 @ (I-L)^{-1} using solve
+    temp = np.linalg.solve(I_minus_L.T, O1.T).T  # O1 @ (I-L)^{-1}
+    Sigma = np.linalg.solve(I_minus_L.T, temp)  # (I-L)^{-T} @ temp
 
     identified = identifier(Sigma)
     L_res = identified.Lambda

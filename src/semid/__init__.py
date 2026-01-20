@@ -15,6 +15,7 @@ from .identification import (
     htc_identify_step,
     lf_htc_id,
     lf_htc_identify_step,
+    lsc_id,
     semid,
     trek_sep_id,
     trek_separation_identify_step,
@@ -26,6 +27,7 @@ from .utils import (
     CComponent,
     TrekSystem,
 )
+from .visualization import plot_latent_digraph, plot_mixed_graph
 
 __all__ = [
     MixedGraph,
@@ -51,5 +53,8 @@ __all__ = [
     edgewise_ts_id,
     lf_htc_id,
     lf_htc_identify_step,
+    lsc_id,
     semid,
+    plot_mixed_graph,
+    plot_latent_digraph,
 ]

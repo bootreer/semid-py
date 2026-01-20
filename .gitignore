@@ -13,3 +13,8 @@ wheels/
 **/.DS_Store
 .coverage
 main.py
+.claude/
+.vscode/
+.serena/
+
+R/

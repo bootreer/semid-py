@@ -83,7 +83,7 @@ def _find_trek_separation_edge(
 
     for k in range(1, min(max_subset_size, m) + 1):
         # Generate all k-subsets of sources
-        source_sets = list(combinations(all_nodes, k))
+        source_sets = combinations(all_nodes, k)
 
         # Generate all (k-1)-subsets of non-descendants excluding parent
         target_candidates = [n for n in non_i_descendants if n != parent]

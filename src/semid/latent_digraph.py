@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Literal
 
 import igraph as ig
 import numpy as np
@@ -20,14 +20,14 @@ class LatentDigraph:
     num_latents: int
     """Number of latent nodes (remaining rows of adj matrix)"""
 
-    _tr_graph: Optional[ig.Graph] = None
+    _tr_graph: ig.Graph | None = None
     """Cached trek graph"""
 
     def __init__(
         self,
         adj: NDArray[np.int32] | list[int],
-        num_observed: Optional[int] = None,
-        nodes: Optional[int] = None,
+        num_observed: int | None = None,
+        nodes: int | None = None,
     ):
         """
         Create a LatentDigraph object.
@@ -77,7 +77,7 @@ class LatentDigraph:
 
     def parents(
         self,
-        nodes: list[int],
+        nodes: int | list[int],
         include_observed: bool = True,
         include_latents: bool = True,
     ) -> list[int]:
@@ -92,19 +92,26 @@ class LatentDigraph:
         Returns:
             List of parent node indices
         """
-        included_nodes = []
-        if include_observed:
-            included_nodes.extend(range(self.num_observed))
-        if include_latents:
-            included_nodes.extend(range(self.num_observed, self.num_nodes))
+        if isinstance(nodes, int):
+            nodes = [nodes]
 
-        # Parents are nodes with edges TO the target nodes
-        parent_mask = self.adj[included_nodes, :][:, nodes].sum(axis=1) > 0
-        return [included_nodes[i] for i in np.flatnonzero(parent_mask)]
+        res = set()
+        for n in nodes:
+            res.update(self.digraph.predecessors(n))
+
+        # Filter based on node index ranges
+        if not include_observed and not include_latents:
+            return []
+        if not include_observed:
+            res = {n for n in res if n >= self.num_observed}
+        elif not include_latents:
+            res = {n for n in res if n < self.num_observed}
+
+        return sorted(res)
 
     def children(
         self,
-        nodes: list[int],
+        nodes: int | list[int],
         include_observed: bool = True,
         include_latents: bool = True,
     ) -> list[int]:
@@ -119,19 +126,25 @@ class LatentDigraph:
         Returns:
             List of child node indices
         """
-        included_nodes = []
-        if include_observed:
-            included_nodes.extend(range(self.num_observed))
-        if include_latents:
-            included_nodes.extend(range(self.num_observed, self.num_nodes))
+        if isinstance(nodes, int):
+            nodes = [nodes]
 
-        # Children are nodes with edges FROM the source nodes
-        child_mask = self.adj[nodes, :][:, included_nodes].sum(axis=0) > 0
-        return [included_nodes[i] for i in np.flatnonzero(child_mask)]
+        res = set()
+        for n in nodes:
+            res.update(self.digraph.successors(n))
+
+        if not include_observed and not include_latents:
+            return []
+        if not include_observed:
+            res = {n for n in res if n >= self.num_observed}
+        elif not include_latents:
+            res = {n for n in res if n < self.num_observed}
+
+        return sorted(res)
 
     def ancestors(
         self,
-        nodes: list[int],
+        nodes: int | list[int],
         include_observed: bool = True,
         include_latents: bool = True,
     ) -> list[int]:
@@ -146,27 +159,26 @@ class LatentDigraph:
         Returns:
             List of ancestor node indices
         """
+        if isinstance(nodes, int):
+            nodes = [nodes]
 
-        ancestors = set()
-        for node in nodes:
-            ancestors.update(
-                self.digraph.neighborhood(
-                    vertices=node, order=self.num_nodes, mode="in"
-                )
-            )
+        # neighborhood with order=num_nodes is essentially a reachability query
+        reachable = self.digraph.neighborhood(
+            vertices=nodes, order=self.num_nodes, mode="in"
+        )
+        res = set().union(*reachable)
 
-        result = []
-        for node in ancestors:
-            if include_observed and node < self.num_observed:
-                result.append(node)
-            elif include_latents and node >= self.num_observed:
-                result.append(node)
-
-        return sorted(result)
+        if not include_observed and not include_latents:
+            return []
+        if not include_observed:
+            return sorted(n for n in res if n >= self.num_observed)
+        if not include_latents:
+            return sorted(n for n in res if n < self.num_observed)
+        return sorted(res)
 
     def descendants(
         self,
-        nodes: list[int],
+        nodes: int | list[int],
         include_observed: bool = True,
         include_latents: bool = True,
     ) -> list[int]:
@@ -181,23 +193,21 @@ class LatentDigraph:
         Returns:
             List of descendant node indices
         """
+        if isinstance(nodes, int):
+            nodes = [nodes]
 
-        descendants = set()
-        for node in nodes:
-            descendants.update(
-                self.digraph.neighborhood(
-                    vertices=node, order=self.num_nodes, mode="out"
-                )
-            )
+        reachable = self.digraph.neighborhood(
+            vertices=nodes, order=self.num_nodes, mode="out"
+        )
+        res = set().union(*reachable)
 
-        result = []
-        for node in descendants:
-            if include_observed and node < self.num_observed:
-                result.append(node)
-            elif include_latents and node >= self.num_observed:
-                result.append(node)
-
-        return sorted(result)
+        if not include_observed and not include_latents:
+            return []
+        if not include_observed:
+            return sorted(n for n in res if n >= self.num_observed)
+        if not include_latents:
+            return sorted(n for n in res if n < self.num_observed)
+        return sorted(res)
 
     def _create_tr_graph(self) -> ig.Graph:
         """
@@ -220,7 +230,7 @@ class LatentDigraph:
         adj_mat[0:m, 0:m] = self.adj.T
         adj_mat[m : 2 * m, m : 2 * m] = self.adj
 
-        return ig.Graph.Adjacency(adj_mat.tolist(), mode="directed")
+        return ig.Graph.Adjacency(adj_mat, mode="directed")
 
     def tr_from(
         self,
@@ -466,3 +476,28 @@ class LatentDigraph:
         return [
             i for i, comp in enumerate(components.membership) if comp == node_component
         ]
+
+    def plot(
+        self,
+        layout: Literal["auto", "circle", "fr", "kk", "grid", "tree"] = "auto",
+        node_labels: list[str] | None = None,
+        **kwargs,
+    ):
+        """
+        Plot this latent digraph using matplotlib.
+
+        Args:
+            layout: Layout algorithm - "auto", "circle", "fr" (Fruchterman-Reingold),
+                "kk" (Kamada-Kawai), "grid", or "tree"
+            node_labels: Custom node labels. If None, uses numeric indices
+            **kwargs: Additional arguments passed to plot_latent_digraph()
+
+        Returns:
+            Tuple of (matplotlib figure, matplotlib axes)
+        """
+        from .visualization import plot_latent_digraph
+
+        # pyrefly: ignore
+        return plot_latent_digraph(
+            self, layout=layout, node_labels=node_labels, **kwargs
+        )

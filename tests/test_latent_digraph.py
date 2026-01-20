@@ -3,7 +3,6 @@ import pytest
 
 from tests.conftest import LATENT_DIGRAPH_EXAMPLES
 
-
 # =============================================================================
 # Property tests
 # =============================================================================
@@ -50,9 +49,9 @@ def test_parents(test_case):
         nodes = test["nodes"]
         expected = test["expected"]
         result = graph.parents(nodes)
-        assert sorted(result) == sorted(expected), (
-            f"parents({nodes}) mismatch: got {result}, expected {expected}"
-        )
+        assert sorted(result) == sorted(
+            expected
+        ), f"parents({nodes}) mismatch: got {result}, expected {expected}"
 
 
 @pytest.mark.parametrize("test_case", LATENT_DIGRAPH_EXAMPLES, ids=lambda tc: tc.name)
@@ -63,9 +62,9 @@ def test_observed_parents(test_case):
         nodes = test["nodes"]
         expected = test["expected"]
         result = graph.observed_parents(nodes)
-        assert sorted(result) == sorted(expected), (
-            f"observed_parents({nodes}) mismatch: got {result}, expected {expected}"
-        )
+        assert sorted(result) == sorted(
+            expected
+        ), f"observed_parents({nodes}) mismatch: got {result}, expected {expected}"
 
 
 @pytest.mark.parametrize("test_case", LATENT_DIGRAPH_EXAMPLES, ids=lambda tc: tc.name)
@@ -76,9 +75,9 @@ def test_ancestors(test_case):
         nodes = test["nodes"]
         expected = test["expected"]
         result = graph.ancestors(nodes)
-        assert sorted(result) == sorted(expected), (
-            f"ancestors({nodes}) mismatch: got {result}, expected {expected}"
-        )
+        assert sorted(result) == sorted(
+            expected
+        ), f"ancestors({nodes}) mismatch: got {result}, expected {expected}"
 
 
 @pytest.mark.parametrize("test_case", LATENT_DIGRAPH_EXAMPLES, ids=lambda tc: tc.name)
@@ -89,9 +88,9 @@ def test_descendants(test_case):
         nodes = test["nodes"]
         expected = test["expected"]
         result = graph.descendants(nodes)
-        assert sorted(result) == sorted(expected), (
-            f"descendants({nodes}) mismatch: got {result}, expected {expected}"
-        )
+        assert sorted(result) == sorted(
+            expected
+        ), f"descendants({nodes}) mismatch: got {result}, expected {expected}"
 
 
 @pytest.mark.parametrize("test_case", LATENT_DIGRAPH_EXAMPLES, ids=lambda tc: tc.name)
@@ -106,12 +105,13 @@ def test_induced_subgraph(test_case):
         expected_adj = expected_adj.reshape((n, n))
 
         subgraph = graph.induced_subgraph(nodes)
-        assert subgraph.num_observed == expected_num_observed, (
-            f"induced_subgraph({nodes}).num_observed mismatch"
-        )
+        assert (
+            subgraph.num_observed == expected_num_observed
+        ), f"induced_subgraph({nodes}).num_observed mismatch"
         np.testing.assert_array_equal(
-            subgraph.adj, expected_adj,
-            err_msg=f"induced_subgraph({nodes}).adj mismatch"
+            subgraph.adj,
+            expected_adj,
+            err_msg=f"induced_subgraph({nodes}).adj mismatch",
         )
 
 

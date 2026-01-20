@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from typing import Optional
-
 import numpy as np
 from numpy.typing import NDArray
 
 
-def validate_matrix(mat: NDArray):
+def validate_matrix(mat: NDArray[np.int32]):
     if len(mat.shape) != 2 or mat.shape[0] != mat.shape[1]:
         raise ValueError("Input matrix must be square")
 
@@ -16,7 +14,7 @@ def validate_matrix(mat: NDArray):
         raise ValueError("Input matrix must have 0's along the diagonal.")
 
 
-def validate_matrices(L: NDArray, O: NDArray):  # noqa: E741
+def validate_matrices(L: NDArray[np.int32], O: NDArray[np.int32]):  # noqa: E741
     if L.shape != O.shape:
         raise ValueError("L and O must have the same shape.")
 
@@ -30,12 +28,8 @@ def validate_matrices(L: NDArray, O: NDArray):  # noqa: E741
         raise ValueError("L and O must have 0's along their diagonals.")
 
 
-def matrix_to_edgelist(adj: np.ndarray):
-    pass
-
-
 def reshape_arr(
-    matrix: NDArray | list[int], nodes: Optional[int] = None
+    matrix: NDArray[np.int32] | list[int], nodes: int | None = None
 ) -> NDArray[np.int32]:
     if isinstance(matrix, np.ndarray) and matrix.ndim > 1:
         if matrix.ndim != 2:

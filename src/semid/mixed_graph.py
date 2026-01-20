@@ -808,3 +808,21 @@ class MixedGraph:
 
         return BiNodesResult(parents, incoming)
 
+    def plot(self, **kwargs):
+        """
+        Plot this mixed graph.
+
+        This is a convenience method that calls plot_mixed_graph(self, **kwargs).
+        See plot_mixed_graph for all available parameters.
+
+        Returns:
+            Tuple of (matplotlib Figure, matplotlib Axes)
+
+        Examples:
+            >>> graph = MixedGraph(L, O)
+            >>> fig, ax = graph.plot(show=False)
+            >>> fig, ax = graph.plot(layout="circle", node_color="lightblue")
+        """
+        from semid.visualization import plot_mixed_graph
+
+        return plot_mixed_graph(self, **kwargs)

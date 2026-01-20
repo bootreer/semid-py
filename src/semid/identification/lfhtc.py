@@ -1,5 +1,5 @@
 from itertools import combinations
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -189,7 +189,7 @@ def _find_lf_htc_system(
     latent_nodes: list[int],
     latents_to_control: list[int],
     edges_between_observed: NDArray,
-    subset_size_control: Optional[int],
+    subset_size_control: int | None,
 ) -> tuple[list[int], list[int], list[int], list[int]] | None:
     """
     Search for valid L, Z sets for latent-factor HTC identification.
@@ -284,7 +284,7 @@ def lf_htc_identify_step(
     Zs: list[list[int]],
     Ls: list[list[int]],
     identifier: Callable[[NDArray], IdentifierResult],
-    subset_size_control: Optional[int] = None,
+    subset_size_control: int | None = None,
 ) -> LfhtcIdentifyStepResult:
     """
     Perform one iteration of latent-factor HTC identification.
@@ -405,7 +405,7 @@ def lf_htc_identify_step(
 
 
 def lf_htc_id(
-    graph: LatentDigraph, subset_size_control: Optional[int] = None
+    graph: LatentDigraph, subset_size_control: int | None = None
 ) -> LfhtcIDResult:
     """
     Determine which edges in a latent digraph are LF-HTC-identifiable.

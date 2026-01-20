@@ -14,9 +14,9 @@ def test_htc_id(graph: Graph):
 
     if graph.htc_id == 1:
         assert result is not None
-        assert (sorted(result) == np.arange(m)).all(), (
-            "Identifiable graph should return all nodes as half-trek identifiable"
-        )
+        assert (
+            sorted(result) == np.arange(m)
+        ).all(), "Identifiable graph should return all nodes as half-trek identifiable"
     else:
         assert result is None or (len(result) < m and np.isin(result, range(m)).all())
 

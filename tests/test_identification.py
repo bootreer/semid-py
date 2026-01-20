@@ -102,7 +102,9 @@ def test_edgewise_id_verma_graph():
     assert sum(len(p) for p in result.unsolved_parents) == 0
 
     # Test parameter recovery
-    random_identification_test(result.identifier, VERMA_L, VERMA_O, result.solved_parents)
+    random_identification_test(
+        result.identifier, VERMA_L, VERMA_O, result.solved_parents
+    )
 
 
 def test_edgewise_id_vs_htc():
@@ -126,9 +128,9 @@ def test_edgewise_id_vs_htc():
         htc_count = sum(len(p) for p in htc_result.solved_parents)
         eid_count = sum(len(p) for p in eid_result.solved_parents)
 
-        assert eid_count >= htc_count, (
-            f"Edgewise identified {eid_count} but HTC identified {htc_count}"
-        )
+        assert (
+            eid_count >= htc_count
+        ), f"Edgewise identified {eid_count} but HTC identified {htc_count}"
 
         # If all edges identified, test parameter recovery
         if sum(len(p) for p in eid_result.unsolved_parents) == 0:
@@ -417,9 +419,9 @@ def test_lf_htc_id_r_examples(L, num_observed, expected_identifiable):
     # Check if all edges are identified
     is_identifiable = sum(len(p) for p in result.unsolved_parents) == 0
 
-    assert is_identifiable == expected_identifiable, (
-        f"Expected identifiable={expected_identifiable}, got {is_identifiable}"
-    )
+    assert (
+        is_identifiable == expected_identifiable
+    ), f"Expected identifiable={expected_identifiable}, got {is_identifiable}"
 
 
 # =============================================================================
@@ -455,9 +457,9 @@ def test_ancestral_id_random_validation():
             for node in range(n):
                 htc_parents = set(htc_result.solved_parents[node])
                 anc_parents = set(anc_result.solved_parents[node])
-                assert htc_parents <= anc_parents, (
-                    f"HTC parents {htc_parents} not subset of ancestral parents {anc_parents}"
-                )
+                assert (
+                    htc_parents <= anc_parents
+                ), f"HTC parents {htc_parents} not subset of ancestral parents {anc_parents}"
 
             # Test parameter recovery for both
             if sum(len(p) for p in htc_result.solved_parents) > 0:
@@ -499,9 +501,9 @@ def test_edgewise_id_random_validation():
             for node in range(n):
                 htc_parents = set(htc_result.solved_parents[node])
                 eid_parents = set(eid_result.solved_parents[node])
-                assert htc_parents <= eid_parents, (
-                    f"HTC parents {htc_parents} not subset of edgewise parents {eid_parents}"
-                )
+                assert (
+                    htc_parents <= eid_parents
+                ), f"HTC parents {htc_parents} not subset of edgewise parents {eid_parents}"
 
             # Test parameter recovery
             if sum(len(p) for p in eid_result.solved_parents) > 0:
@@ -568,8 +570,8 @@ def test_tian_decomposition_covariance_recovery():
 
                 # Compute covariance matrix: Sigma = (I - L)^{-T} @ Omega @ (I - L)^{-1}
                 I_minus_L = np.eye(n) - LL
-                I_minus_L_inv = np.linalg.inv(I_minus_L)
-                Sigma = I_minus_L_inv.T @ OO @ I_minus_L_inv
+                temp = np.linalg.solve(I_minus_L.T, OO.T).T  # OO @ (I-L)^{-1}
+                Sigma = np.linalg.solve(I_minus_L.T, temp)  # (I-L)^{-T} @ temp
 
                 # Get Tian decomposition
                 graph = MixedGraph(L, O)
@@ -596,8 +598,8 @@ def test_tian_decomposition_covariance_recovery():
 
                     # Compute expected Sigma
                     I_minus_LLnew = np.eye(len(top_order)) - LLnew
-                    I_minus_LLnew_inv = np.linalg.inv(I_minus_LLnew)
-                    SigmaNew = I_minus_LLnew_inv.T @ OOnew @ I_minus_LLnew_inv
+                    temp_new = np.linalg.solve(I_minus_LLnew.T, OOnew.T).T
+                    SigmaNew = np.linalg.solve(I_minus_LLnew.T, temp_new)
 
                     # Get recovered Sigma using our function
                     recoveredSigma = tian_sigma_for_component(

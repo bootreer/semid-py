@@ -1,7 +1,7 @@
 """Data types for identification results."""
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -116,9 +116,9 @@ class SEMIDResult:
         `tian_decompose`: Whether Tian decomposition was used
     """
 
-    is_global_id: Optional[bool]
-    is_generic_non_id: Optional[bool]
-    generic_id_result: Optional[GenericIDResult]
+    is_global_id: bool | None
+    is_generic_non_id: bool | None
+    generic_id_result: GenericIDResult | None
     mixed_graph: MixedGraph
     tian_decompose: bool = False
 

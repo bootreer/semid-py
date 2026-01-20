@@ -9,7 +9,9 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "igraph>=0.11.9",
+    "matplotlib>=3.10.8",
     "numpy>=2.3.3",
+    "scipy>=1.16.3",
 ]
 
 [tool.pyrefly]
@@ -25,8 +27,10 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "ipykernel>=7.1.0",
+    "pandas>=2.3.3",
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
+    "tqdm>=4.67.1",
 ]
 
 [tool.pytest.ini_options]

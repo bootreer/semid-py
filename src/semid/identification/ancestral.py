@@ -53,30 +53,29 @@ def create_ancestral_identifier(
         incoming = c_component.incoming
 
         # Create mapping from original indices to ancestral indices
-        def to_anc_idx(x):
-            return ancestral_subset.index(x)
+        anc_map = {node: idx for idx, node in enumerate(ancestral_subset)}
 
         # Map everything to ancestral indices
-        top_order_anc = [to_anc_idx(x) for x in top_order]
-        sources_anc = [to_anc_idx(x) for x in sources]
-        targets_anc = [to_anc_idx(x) for x in targets]
-        htr_sources_anc = [to_anc_idx(x) for x in htr_sources]
-        internal_anc = [to_anc_idx(x) for x in internal]
-        incoming_anc = [to_anc_idx(x) for x in incoming]
-        node_anc = to_anc_idx(node)
+        top_order_anc = [anc_map[x] for x in top_order]
+        sources_anc = [anc_map[x] for x in sources]
+        targets_anc = [anc_map[x] for x in targets]
+        htr_sources_anc = [anc_map[x] for x in htr_sources]
+        internal_anc = [anc_map[x] for x in internal]
+        incoming_anc = [anc_map[x] for x in incoming]
+        node_anc = anc_map[node]
 
         Sigma_anc = Sigma[np.ix_(ancestral_subset, ancestral_subset)]
         Sigma_anc_tian = tian_sigma_for_component(
             Sigma_anc, internal_anc, incoming_anc, top_order_anc
         )
 
-        def to_tian_idx(x):
-            return top_order_anc.index(x)
+        # Create mapping for tian indices
+        tian_map = {node: idx for idx, node in enumerate(top_order_anc)}
 
-        sources_tian = [to_tian_idx(x) for x in sources_anc]
-        targets_tian = [to_tian_idx(x) for x in targets_anc]
-        htr_sources_tian = [to_tian_idx(x) for x in htr_sources_anc]
-        node_tian = to_tian_idx(node_anc)
+        sources_tian = [tian_map[x] for x in sources_anc]
+        targets_tian = [tian_map[x] for x in targets_anc]
+        htr_sources_tian = [tian_map[x] for x in htr_sources_anc]
+        node_tian = tian_map[node_anc]
 
         Lambda_anc_tian = Lambda[np.ix_(ancestral_subset, ancestral_subset)]
         Lambda_anc_tian = Lambda_anc_tian[np.ix_(top_order_anc, top_order_anc)]
