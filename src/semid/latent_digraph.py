@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 
 from semid import utils
 from semid.utils import TrekSystem
-
+from collections import deque
 
 class LatentDigraph:
     adj: NDArray[np.int32]
@@ -239,6 +239,7 @@ class LatentDigraph:
         avoid_right_nodes: list[int] = [],
         include_observed: bool = True,
         include_latents: bool = True,
+        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are trek-reachable from the given nodes.
@@ -251,6 +252,7 @@ class LatentDigraph:
             `avoid_right_nodes`: Nodes to avoid on the right (forward) side
             `include_observed`: Whether to include observed nodes in result
             `include_latents`: Whether to include latent nodes in result
+            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
 
         Returns:
             List of trek-reachable node indices
@@ -259,7 +261,6 @@ class LatentDigraph:
             self._tr_graph = self._create_tr_graph()
 
         m = self.num_nodes
-        from collections import deque
 
         # Build set of avoided nodes in trek graph (2m nodes total)
         avoid_set = set(avoid_left_nodes) | set(n + m for n in avoid_right_nodes)
@@ -267,19 +268,24 @@ class LatentDigraph:
         # Use a single BFS traversal for efficiency
         # Filter valid start nodes that are not in the avoid set
         valid_starts = [n for n in nodes if n not in avoid_set]
-        
-        queue = deque(valid_starts)
-        visited = set(valid_starts)
-        
+
+        # Track depth for each node: (node, depth)
+        queue: deque[tuple[int, int]] = deque([(n, 0) for n in valid_starts])
+        visited: set[int] = set(valid_starts)
+
         while queue:
-            current = queue.popleft()
+            current, depth = queue.popleft()
+
+            # Check depth limit before exploring neighbors
+            if max_depth is not None and depth >= max_depth:
+                continue
 
             # Get outgoing neighbors
             neighbors = self._tr_graph.neighbors(current, mode="out")
             for neighbor in neighbors:
                 if neighbor not in visited and neighbor not in avoid_set:
                     visited.add(neighbor)
-                    queue.append(neighbor)
+                    queue.append((neighbor, depth + 1))
 
         # Convert back from trek graph node indices to original graph indices
         # Nodes 0..m-1 map to themselves, nodes m..2m-1 map to 0..m-1
@@ -306,6 +312,7 @@ class LatentDigraph:
         avoid_right_nodes: list[int] = [],
         include_observed: bool = True,
         include_latents: bool = True,
+        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are half-trek-reachable from the given nodes.
@@ -320,6 +327,7 @@ class LatentDigraph:
             avoid_right_nodes: Nodes to avoid on the right (forward) side
             include_observed: Whether to include observed nodes in result
             include_latents: Whether to include latent nodes in result
+            max_depth: Maximum trek depth (number of edges). None = unlimited.
 
         Returns:
             List of half-trek-reachable node indices
@@ -335,6 +343,7 @@ class LatentDigraph:
             avoid_right_nodes=avoid_right_nodes,
             include_observed=include_observed,
             include_latents=include_latents,
+            max_depth=max_depth,
         )
 
     def _create_trek_flow_graph(self) -> tuple[NDArray[np.int32], int, int]:

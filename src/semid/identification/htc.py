@@ -69,6 +69,7 @@ def htc_identify_step(
     unsolved_parents: list[list[int]],
     solved_parents: list[list[int]],
     identifier: Callable[[NDArray], IdentifierResult],
+    max_trek_depth: int | None = None,
 ) -> IdentifyStepResult:
     """
     Perform one iteration of HTC idenfication.
@@ -82,6 +83,7 @@ def htc_identify_step(
         `unsolved_parents`: List of unsolved parent edges for each node
         `solved_parents`: List of solved parent edges for each node
         `identifier`: Current identifier function
+        `max_trek_depth`: Maximum trek depth for half-trek reachability. None = unlimited.
 
     Returns:
         dict with:
@@ -100,7 +102,7 @@ def htc_identify_step(
         if i in solved_nodes:
             continue
 
-        htr_from_node = set(mixed_graph.htr_from([i]))
+        htr_from_node = set(mixed_graph.htr_from([i], max_depth=max_trek_depth))
 
         siblings_of_i = set(np.flatnonzero(mixed_graph.b_adj[i, :]))
 
@@ -144,6 +146,7 @@ def htc_identify_step(
                 i,
                 htr_sources,
             )
+            solved_nodes.append(i)
 
     return IdentifyStepResult(
         identified_edges,
@@ -155,9 +158,24 @@ def htc_identify_step(
 
 def htc_id(
     mixed_graph: MixedGraph,
-    tian_decompose: bool = False,
+    tian_decompose: bool = True,
+    max_trek_depth: int | None = None,
 ) -> GenericIDResult:
-    """Run HTC identification on a mixed graph."""
+    """
+    Run HTC identification on a mixed graph.
+
+    Args:
+        mixed_graph: The mixed graph to identify
+        tian_decompose: Whether to use Tian decomposition
+        max_trek_depth: Maximum trek depth for half-trek reachability. None = unlimited.
+
+    Returns:
+        GenericIDResult with solved/unsolved edges and identifier function
+    """
     from .core import general_generic_id
 
-    return general_generic_id(mixed_graph, [htc_identify_step], tian_decompose)
+    # Create wrapper to pass max_trek_depth to htc_identify_step
+    def htc_step_wrapper(graph, unsolved, solved, ident):
+        return htc_identify_step(graph, unsolved, solved, ident, max_trek_depth)
+
+    return general_generic_id(mixed_graph, [htc_step_wrapper], tian_decompose)

@@ -9,6 +9,14 @@ from semid.latent_digraph import LatentDigraph
 
 from .lfhtc import subsets_of_size
 
+# Numerical tolerances matching R implementation's exact equality philosophy
+STRICT_ATOL = 1e-9
+STRICT_RTOL = 0
+
+# Integer LP solver settings
+INTEGER_LP_TIMEOUT = 60.0  # seconds
+INTEGER_LP_MIP_GAP = 1e-9  # Tighter gap for integer solutions
+
 
 class LatentSubgraph:
     cov: LatentDigraph
@@ -220,8 +228,14 @@ def joint_flow(
 
     # 0 = continuous, 1 = integer
     integrality = None
+    options = None
     if integer:
         integrality = np.ones(num_edges_g + num_edges_g_sub, dtype=int)
+        # Add timeout and tighter gap for integer problems
+        options = {
+            "time_limit": INTEGER_LP_TIMEOUT,
+            "mip_rel_gap": INTEGER_LP_MIP_GAP,
+        }
 
     # Solve LP
     result = linprog(
@@ -233,6 +247,7 @@ def joint_flow(
         bounds=bounds,
         method="highs",
         integrality=integrality,
+        options=options,
     )
 
     return {
@@ -241,6 +256,8 @@ def joint_flow(
             result.x if result.success else np.zeros(num_edges_g + num_edges_g_sub)
         ),
         "success": result.success,
+        "status": result.status,
+        "message": result.message,
     }
 
 
@@ -258,12 +275,14 @@ def _construct_path_system(
         `t`: Sink vertex
 
     Returns:
-        List of paths as edge sequences
+        List of paths as edge sequences, or empty list if solution is not integer
     """
     solution = lp_res["solution"]
 
-    # Check if solution is integer
-    if not np.allclose(solution, np.round(solution)):
+    # Check if solution is integer using STRICT tolerance (matching R implementation)
+    # R uses: !all(lpRes$solution - round(lpRes$solution) == 0)
+    # We use strict tolerance to match R's exact equality philosophy
+    if not np.allclose(solution, np.round(solution), atol=STRICT_ATOL, rtol=STRICT_RTOL):
         return []
 
     solution = np.round(solution).astype(int)
@@ -275,7 +294,29 @@ def _construct_path_system(
 
     paths = []
 
-    # Paths in subgraph
+    # Paths in main graph (processed first to match R's ordering)
+    active_edges_main = [edges_g[e] for e in range(num_edges_g) if solution[e] == 1]
+
+    if active_edges_main:
+        starting_edges = [(u, v) for u, v in active_edges_main if u == s]
+        for start_edge in starting_edges:
+            path = [start_edge]
+            current = start_edge[1]
+            max_iterations = g.vcount()  # Path can't be longer than # of vertices
+            iterations = 0
+            while current != t and iterations < max_iterations:
+                iterations += 1
+                next_edge = next(((u, v) for u, v in active_edges_main if u == current), None)
+                if next_edge is None:
+                    break
+                path.append(next_edge)
+                current = next_edge[1]
+
+            # Only add complete paths that reached the target
+            if current == t:
+                paths.append(path)
+
+    # Paths in subgraph (processed second to match R's ordering)
     active_edges_sub = [
         edges_g_sub[e] for e in range(num_edges_g_sub) if solution[num_edges_g + e] == 1
     ]
@@ -285,25 +326,19 @@ def _construct_path_system(
         for start_edge in starting_edges:
             path = [start_edge]
             current = start_edge[1]
-            while current != t:
-                next_edge = next((u, v) for u, v in active_edges_sub if u == current)
+            max_iterations = g_sub.vcount()  # Path can't be longer than # of vertices
+            iterations = 0
+            while current != t and iterations < max_iterations:
+                iterations += 1
+                next_edge = next(((u, v) for u, v in active_edges_sub if u == current), None)
+                if next_edge is None:
+                    break
                 path.append(next_edge)
                 current = next_edge[1]
-            paths.append(path)
 
-    # Paths in main graph
-    active_edges_main = [edges_g[e] for e in range(num_edges_g) if solution[e] == 1]
-
-    if active_edges_main:
-        starting_edges = [(u, v) for u, v in active_edges_main if u == s]
-        for start_edge in starting_edges:
-            path = [start_edge]
-            current = start_edge[1]
-            while current != t:
-                next_edge = next((u, v) for u, v in active_edges_main if u == current)
-                path.append(next_edge)
-                current = next_edge[1]
-            paths.append(path)
+            # Only add complete paths that reached the target
+            if current == t:
+                paths.append(path)
 
     return paths
 
@@ -347,8 +382,8 @@ def _construct_trek_system(
             if u_mapped != v_mapped:  # Skip self-loops from doubling
                 trek.append((u_mapped, v_mapped))
 
-        if trek:
-            trek_system.append(trek)
+        # Always append trek to keep trek_system aligned with start_nodes (matching R)
+        trek_system.append(trek)
 
     return {"TrekSystem": trek_system, "startNodes": start_nodes}
 
@@ -472,27 +507,53 @@ def _check_trek_system(
     flow_graph = ig.Graph.Adjacency(flow_adj.tolist(), mode="directed")
     flow_sub_graph = ig.Graph.Adjacency(flow_sub_adj.tolist(), mode="directed")
 
-    # Solve LP
+    # Solve LP - try continuous first (matching R implementation)
     res = joint_flow(flow_graph, flow_sub_graph, s, t, integer=False)
-    objval = res["objval"]
 
-    # Check if we need integer solution
-    if not np.allclose(res["solution"], np.round(res["solution"])):
-        res_int = joint_flow(flow_graph, flow_sub_graph, s, t, integer=True)
-        objval = res_int["objval"]
-        res = res_int
+    # Check if continuous solution succeeded
+    if not res["success"]:
+        return {"objval": 0, "error": "Continuous LP failed", "success": False}
 
+    continuous_objval = res["objval"]
+    objval = continuous_objval
     target_flow = len(Z) + len(semi_parents_of_v)
 
-    if np.isclose(objval, target_flow):
+    # Check if we need integer solution using STRICT tolerance
+    # R implementation: !all(res$solution - round(res$solution) == 0)
+    # Use strict tolerance matching R's exact equality philosophy
+    is_integer = np.allclose(
+        res["solution"], np.round(res["solution"]), atol=STRICT_ATOL, rtol=STRICT_RTOL
+    )
+
+    if not is_integer:
+        # Try integer LP (matching R implementation logic)
+        res_int = joint_flow(flow_graph, flow_sub_graph, s, t, integer=True)
+
+        if not res_int["success"]:
+            # Integer LP failed - continue with continuous result
+            # Trek construction will fail if invalid
+            pass
+        else:
+            integer_objval = res_int["objval"]
+            objval = integer_objval
+            res = res_int
+
+    # Use strict tolerance matching R's exact equality
+    if np.isclose(objval, target_flow, atol=STRICT_ATOL, rtol=STRICT_RTOL):
         trek_result = _construct_trek_system(res, flow_graph, flow_sub_graph, s, t, m)
+
+        # Validate trek system was constructed successfully
+        if not trek_result["TrekSystem"]:
+            return {"objval": objval, "success": False}
+
         return {
             "objval": objval,
             "trekSystem": trek_result["TrekSystem"],
             "Y": trek_result["startNodes"],
+            "success": True,
         }
     else:
-        return {"objval": objval}
+        return {"objval": objval, "success": False}
 
 
 def _generate_h1_h2_combinations(latent_nodes: list[int], max_k: int):
@@ -572,10 +633,13 @@ def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> dict:
                     if len(Ya) >= len(semi_parents_of_v) + len(Z):
                         res = _check_trek_system(g, lg, Z, v, Ya)
 
-                        # Check if trek system exists
-                        if np.isclose(
+                        # Check if trek system exists (with strict tolerance and success flag)
+                        target_flow = len(semi_parents_of_v) + len(Z)
+                        if res.get("success", False) and np.isclose(
                             res["objval"],
-                            len(semi_parents_of_v) + len(Z),
+                            target_flow,
+                            atol=STRICT_ATOL,
+                            rtol=STRICT_RTOL,
                         ):
                             Ys[v] = res["Y"]
                             Zs[v] = Z

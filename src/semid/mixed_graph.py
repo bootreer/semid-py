@@ -89,6 +89,48 @@ class MixedGraph:
 
         self.internal = LatentDigraph(L_with_latents, num_observed=num_observed)
 
+    @staticmethod
+    def from_latent(lg: LatentDigraph) -> MixedGraph:
+        """
+        Create a MixedGraph from a LatentDigraph by projecting out latent variables.
+
+        Args:
+            lg: LatentDigraph to project
+
+        Returns:
+            MixedGraph with observed nodes only
+
+        Raises:
+            ValueError: If latent nodes have parents
+        """
+        latent = lg.latent_nodes()
+        if len(lg.parents(latent)):
+            raise ValueError("MixedGraph can only be created from a LatentDigraph when latent nodes have no parents")
+
+        latentL = lg.adj.copy()
+        observed = lg.observed_nodes()
+        latentL[np.ix_(observed, observed)] = 0
+
+        llg = LatentDigraph(latentL, len(observed))
+
+        O: NDArray[np.int32] = np.zeros((len(observed), len(observed)), dtype=np.int32)
+
+        if len(observed) >= 1:
+            for i in observed:
+                reachable = llg.tr_from(
+                    nodes=[i],
+                    include_observed=True,
+                    include_latents=False
+                )
+                for j in reachable:
+                    O[i, j] = 1
+
+        # Remove self-loops
+        np.fill_diagonal(O, 0)
+
+        L = lg.adj[np.ix_(observed, observed)]
+        return MixedGraph(L, O)
+
     @overload
     def to_internal(self, nodes: int) -> int: ...
 
@@ -147,6 +189,7 @@ class MixedGraph:
         nodes: list[int],
         avoid_left_nodes: list[int] = [],
         avoid_right_nodes: list[int] = [],
+        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are trek-reachable from the given nodes.
@@ -159,6 +202,7 @@ class MixedGraph:
             `nodes`: Nodes to start from (external vertex IDs)
             `avoid_left_nodes`: Nodes to avoid on the left (external vertex IDs)
             `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
+            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
 
         Returns:
             List of trek-reachable node indices (external vertex IDs)
@@ -178,6 +222,7 @@ class MixedGraph:
             avoid_right_nodes=internal_avoid_right,
             include_observed=True,
             include_latents=False,
+            max_depth=max_depth,
         )
 
         # Convert results back to external IDs
@@ -188,6 +233,7 @@ class MixedGraph:
         nodes: list[int],
         avoid_left_nodes: list[int] = [],
         avoid_right_nodes: list[int] = [],
+        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are half-trek-reachable from the given nodes.
@@ -199,6 +245,7 @@ class MixedGraph:
             `nodes`: Nodes to start from (external vertex IDs)
             `avoid_left_nodes`: Additional nodes to avoid on the left (external vertex IDs)
             `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
+            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
 
         Returns:
             List of half-trek-reachable node indices (external vertex IDs)
@@ -212,6 +259,7 @@ class MixedGraph:
             nodes=nodes,
             avoid_left_nodes=combined_avoid_left,
             avoid_right_nodes=avoid_right_nodes,
+            max_depth=max_depth,
         )
 
     def induced_subgraph(self, nodes: list[int]) -> MixedGraph:
@@ -259,29 +307,61 @@ class MixedGraph:
 
         return sorted([self._vertex_nums[i] for i in ancestors_set])
 
-    def parents(self, node: int) -> list[int]:
-        """Get parents of a node (using external vertex IDs)."""
-        idx = self._vertex_to_idx[node]
-        parent_indices = np.flatnonzero(self.d_adj[:, idx])
-        return [self._vertex_nums[i] for i in parent_indices]
-
-    def children(self, node: int) -> list[int]:
-        """Get children of a node (using external vertex IDs)."""
-        idx = self._vertex_to_idx[node]
-        child_indices = np.flatnonzero(self.d_adj[idx, :])
-        return [self._vertex_nums[i] for i in child_indices]
-
-    def siblings(self, nodes: int | list[int]) -> list[int]:
+    def parents(self, nodes: int | list[int]) -> list[int]:
         """
-        Get all siblings (nodes connected by bidirected edges).
-
-        Siblings include the input nodes themselves.
+        Get parents of node(s) (using external vertex IDs).
 
         Args:
             `nodes`: Single node or list of nodes (external vertex IDs)
 
         Returns:
-            Sorted list of all sibling nodes including the input nodes (external IDs)
+            Sorted list of all parent nodes (external IDs)
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        if not nodes:
+            return []
+
+        parents_set: set[int] = set()
+        for node in nodes:
+            idx = self._vertex_to_idx[node]
+            parent_indices = np.flatnonzero(self.d_adj[:, idx])
+            parents_set.update(parent_indices)
+
+        return sorted([self._vertex_nums[i] for i in parents_set])
+
+    def children(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get children of node(s) (using external vertex IDs).
+
+        Args:
+            `nodes`: Single node or list of nodes (external vertex IDs)
+
+        Returns:
+            Sorted list of all child nodes (external IDs)
+        """
+        if isinstance(nodes, int):
+            nodes = [nodes]
+        if not nodes:
+            return []
+
+        children_set: set[int] = set()
+        for node in nodes:
+            idx = self._vertex_to_idx[node]
+            child_indices = np.flatnonzero(self.d_adj[idx, :])
+            children_set.update(child_indices)
+
+        return sorted([self._vertex_nums[i] for i in children_set])
+
+    def siblings(self, nodes: int | list[int]) -> list[int]:
+        """
+        Get all siblings (nodes connected by bidirected edges).
+
+        Args:
+            `nodes`: Single node or list of nodes (external vertex IDs)
+
+        Returns:
+            Sorted list of sibling nodes (external IDs), not including input nodes
         """
         if isinstance(nodes, int):
             nodes = [nodes]
@@ -289,13 +369,14 @@ class MixedGraph:
             return []
 
         internal_nodes = [self._vertex_to_idx[n] for n in nodes]
-        siblings_set = set(internal_nodes)
 
-        for idx in internal_nodes:
-            sibs = self.bidirected.neighborhood(vertices=idx, order=1, mode="all")
-            siblings_set.update(sibs)
+        # Find nodes with bidirected edges to any of the input nodes
+        # R: which(rowSums(this$.O[, this$toIn(nodes), drop = F]) != 0)
+        sibling_indices = np.flatnonzero(
+            np.sum(self.b_adj[:, internal_nodes], axis=1) != 0
+        )
 
-        return sorted([self._vertex_nums[i] for i in siblings_set])
+        return sorted([self._vertex_nums[i] for i in sibling_indices])
 
     def descendants(self, nodes: int | list[int]) -> list[int]:
         """

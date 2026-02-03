@@ -32,8 +32,15 @@ dev = [
     "pytest-cov>=7.0.0",
     "tqdm>=4.67.1",
 ]
+r-comparison = [
+    "rpy2>=3.5.0",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+markers = [
+    "r_comparison: tests that compare Python implementation against R (requires R and rpy2)",
+]
+addopts = "-m 'not r_comparison'"

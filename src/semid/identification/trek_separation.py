@@ -45,10 +45,11 @@ def create_trek_separation_identifier(
         Omega = identified_params.Omega.copy()
 
         SigmaMinus = Sigma.copy()
-        for solved_parent in solved_parents:
+        if solved_parents:
             SigmaMinus[sources, node] = (
                 SigmaMinus[sources, node]
-                - SigmaMinus[sources, solved_parent] * Lambda[solved_parent, node]
+                - SigmaMinus[np.ix_(sources, solved_parents)]
+                @ Lambda[solved_parents, node]
             )
 
         subSigmaNode = SigmaMinus[np.ix_(sources, targets + [node])]
@@ -201,7 +202,7 @@ def trek_separation_identify_step(
 def trek_sep_id(
     mixed_graph: MixedGraph,
     max_subset_size: int = 3,
-    tian_decompose: bool = False,
+    tian_decompose: bool = True,
 ) -> GenericIDResult:
     def ts_step(graph, unsolved, solved, identifier):
         return trek_separation_identify_step(

@@ -243,7 +243,7 @@ def edgewise_identify_step(
 def edgewise_id(
     mixed_graph: MixedGraph,
     subset_size_control: int = 3,
-    tian_decompose: bool = False,
+    tian_decompose: bool = True,
 ) -> GenericIDResult:
     """
     Determines which edges in a mixed graph are edgewiseID-identifiable
@@ -256,7 +256,7 @@ def edgewise_id(
         `mixed_graph`: `MixedGraph` object representing the linear structural equation model
         `subset_size_control`: Controls subset search size (default 3)
                            Searches subsets of sizes 1..k and n-k+1..n
-        `tian_decompose`: Whether to use Tian decomposition (Default: False)
+        `tian_decompose`: Whether to use Tian decomposition (Default: True)
 
     Returns:
         GenericIDResult with identified edges and identifier function

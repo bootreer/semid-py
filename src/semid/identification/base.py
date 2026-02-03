@@ -173,9 +173,19 @@ def tian_identifier(
             Lambda[np.ix_(top_order, internal)] = Lambda_comp[
                 :, internal_indices_in_top
             ]
+            # Set non-topOrder entries to 0 (matching R implementation)
+            non_top_order = [j for j in range(m) if j not in top_order]
+            if non_top_order:
+                Lambda[np.ix_(non_top_order, internal)] = 0
+
             Omega[np.ix_(internal, internal)] = Omega_comp[
                 np.ix_(internal_indices_in_top, internal_indices_in_top)
             ]
+            # Set non-internal entries to 0 (matching R implementation)
+            non_internal = [j for j in range(m) if j not in internal]
+            if non_internal:
+                Omega[np.ix_(non_internal, internal)] = 0
+                Omega[np.ix_(internal, non_internal)] = 0
 
         return IdentifierResult(Lambda, Omega)
 
