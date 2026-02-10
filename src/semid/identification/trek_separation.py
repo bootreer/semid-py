@@ -82,7 +82,7 @@ def _find_trek_separation_edge(
     """
     m = len(all_nodes)
 
-    for k in range(1, min(max_subset_size, m) + 1):
+    for k in range(1, min(max_subset_size, m - 1) + 1):
         # Generate all k-subsets of sources
         source_sets = combinations(all_nodes, k)
 
@@ -141,11 +141,8 @@ def trek_separation_identify_step(
         `max_subset_size`: Maximum subset size to consider (default 3)
 
     Returns:
-        dict with:
-            - `identified_edges`: List of newly identified edges as (parent, child) tuples
-            - `unsolved_parents`: Updated unsolved parents
-            - `solved_parents`: Updated solved parents
-            - `identifier`: Updated identifier function
+        IdentifyStepResult with identified_edges, unsolved_parents,
+        solved_parents, and identifier
     """
     if max_subset_size <= 0:
         raise ValueError("max_subset_size must be >= 1")

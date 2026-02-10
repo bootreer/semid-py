@@ -9,6 +9,8 @@ To install R dependencies:
     # Or from GitHub: devtools::install_github("Lucaweihs/SEMID")
 """
 
+# ruff: noqa: E741
+
 import pytest
 import numpy as np
 from numpy.typing import NDArray
@@ -143,7 +145,11 @@ def extract_r_solved_edges(r_result, n_nodes: int) -> set[tuple[int, int]]:
         else:
             parents_r = solved_parents[child_r - 1]
 
-        if parents_r is not None and hasattr(parents_r, "__len__") and len(parents_r) > 0:
+        if (
+            parents_r is not None
+            and hasattr(parents_r, "__len__")
+            and len(parents_r) > 0
+        ):
             for parent_r in parents_r:
                 parent_py = r_to_py_index(int(parent_r))
                 child_py = r_to_py_index(child_r)
@@ -180,7 +186,11 @@ def extract_r_unsolved_edges(r_result, n_nodes: int) -> set[tuple[int, int]]:
         else:
             parents_r = unsolved_parents[child_r - 1]
 
-        if parents_r is not None and hasattr(parents_r, "__len__") and len(parents_r) > 0:
+        if (
+            parents_r is not None
+            and hasattr(parents_r, "__len__")
+            and len(parents_r) > 0
+        ):
             for parent_r in parents_r:
                 parent_py = r_to_py_index(int(parent_r))
                 child_py = r_to_py_index(child_r)
@@ -206,7 +216,9 @@ def extract_py_unsolved_edges(py_result) -> set[tuple[int, int]]:
     return unsolved_edges
 
 
-def generate_random_covariance(n: int, seed: int, L: NDArray | None = None, O: NDArray | None = None) -> NDArray:
+def generate_random_covariance(
+    n: int, seed: int, L: NDArray | None = None, O: NDArray | None = None
+) -> NDArray:
     """
     Generate a random valid covariance matrix.
 
@@ -218,7 +230,9 @@ def generate_random_covariance(n: int, seed: int, L: NDArray | None = None, O: N
     if L is not None and O is not None:
         # Generate random weights for Lambda (L)
         Lambda = np.zeros_like(L)
-        Lambda[L != 0] = np.random.uniform(0.5, 1.5, size=np.sum(L != 0)) * np.random.choice([-1, 1], size=np.sum(L != 0))
+        Lambda[L != 0] = np.random.uniform(
+            0.5, 1.5, size=np.sum(L != 0)
+        ) * np.random.choice([-1, 1], size=np.sum(L != 0))
 
         # Generate random weights for Omega (O)
         # Construct symmetric Omega
@@ -564,7 +578,12 @@ class TestHTCIdentification:
             r_result = r_semid.htcID(r_graph)
 
         compare_identifier_outputs(
-            py_result.identifier, get_r_list_element(r_result, "identifier"), n, r_converter, L=L, O=O
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            n,
+            r_converter,
+            L=L,
+            O=O,
         )
 
 
@@ -610,7 +629,12 @@ class TestEdgewiseIdentification:
             r_result = r_semid.edgewiseID(r_graph)
 
         compare_identifier_outputs(
-            py_result.identifier, get_r_list_element(r_result, "identifier"), n, r_converter, L=L, O=O
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            n,
+            r_converter,
+            L=L,
+            O=O,
         )
 
 
@@ -625,12 +649,12 @@ class TestTrekSeparationIdentification:
     @pytest.fixture(scope="class")
     def r_trek_sep_id(self, r_semid):
         """Define R function for trek separation ID."""
-        ro.r('''
+        ro.r("""
             trekSeparationID <- function(mixedGraph) {
                 return(generalGenericID(mixedGraph, list(trekSeparationIdentifyStep)))
             }
-        ''')
-        return ro.globalenv['trekSeparationID']
+        """)
+        return ro.globalenv["trekSeparationID"]
 
     @pytest.mark.parametrize("graph_id", get_test_graph_ids())
     def test_trek_sep_solved_edges(self, graph_id, r_semid, r_converter, r_trek_sep_id):
@@ -652,7 +676,9 @@ class TestTrekSeparationIdentification:
         assert py_solved == r_solved, f"Solved edges differ for {graph_id}"
 
     @pytest.mark.parametrize("graph_id", get_test_graph_ids())
-    def test_trek_sep_identifier_function(self, graph_id, r_semid, r_converter, r_trek_sep_id):
+    def test_trek_sep_identifier_function(
+        self, graph_id, r_semid, r_converter, r_trek_sep_id
+    ):
         """Test that trekSepID identifier function produces same results as R."""
         graph_data = TEST_GRAPHS[graph_id]
         L, O = graph_data["L"], graph_data["O"]
@@ -666,7 +692,12 @@ class TestTrekSeparationIdentification:
             r_result = r_trek_sep_id(r_graph)
 
         compare_identifier_outputs(
-            py_result.identifier, get_r_list_element(r_result, "identifier"), n, r_converter, L=L, O=O
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            n,
+            r_converter,
+            L=L,
+            O=O,
         )
 
 
@@ -729,16 +760,20 @@ class TestSEMID:
         # But for valid graphs it should be bool.
         # Python uses None if not tested, but default is tested.
         if py_global is not None:
-             assert py_global == r_global, f"Global ID status differs for {graph_id}"
+            assert py_global == r_global, f"Global ID status differs for {graph_id}"
 
         # Compare generic non-identifiability
         # R semID returns isGenericNonID
         py_generic_non_id = py_result.is_generic_non_id
         r_generic_non_id_raw = get_r_list_element(r_result, "isGenericNonID")
-        r_generic_non_id = bool(r_generic_non_id_raw[0]) if r_generic_non_id_raw is not None else None
+        r_generic_non_id = (
+            bool(r_generic_non_id_raw[0]) if r_generic_non_id_raw is not None else None
+        )
 
         if py_generic_non_id is not None:
-            assert py_generic_non_id == r_generic_non_id, f"Generic Non-ID status differs for {graph_id}"
+            assert py_generic_non_id == r_generic_non_id, (
+                f"Generic Non-ID status differs for {graph_id}"
+            )
 
     @pytest.mark.parametrize("graph_id", get_test_graph_ids())
     def test_semid_identifier_function(self, graph_id, r_semid, r_converter):
@@ -759,16 +794,21 @@ class TestSEMID:
 
         # Check if generic identification was run and we have a result
         if r_generic_result is None or len(r_generic_result) == 0:
-             # If R didn't run generic ID, Python might have (defaults match?)
-             # semid default is test_generic_non_id=True, id_step_functions=[htc]
-             # R semID default is genericIdStepFunctions = list(htcIdentifyStep)
-             pass
+            # If R didn't run generic ID, Python might have (defaults match?)
+            # semid default is test_generic_non_id=True, id_step_functions=[htc]
+            # R semID default is genericIdStepFunctions = list(htcIdentifyStep)
+            pass
         else:
-             r_identifier = get_r_list_element(r_generic_result, "identifier")
-             if py_result.generic_id_result and py_result.generic_id_result.identifier:
-                 compare_identifier_outputs(
-                    py_result.generic_id_result.identifier, r_identifier, n, r_converter, L=L, O=O
-                 )
+            r_identifier = get_r_list_element(r_generic_result, "identifier")
+            if py_result.generic_id_result and py_result.generic_id_result.identifier:
+                compare_identifier_outputs(
+                    py_result.generic_id_result.identifier,
+                    r_identifier,
+                    n,
+                    r_converter,
+                    L=L,
+                    O=O,
+                )
 
 
 # =============================================================================
@@ -858,11 +898,13 @@ class TestRandomGraphs:
         py_generic_non_id = py_result.is_generic_non_id
 
         r_generic_non_id_raw = get_r_list_element(r_result, "isGenericNonID")
-        r_generic_non_id = bool(r_generic_non_id_raw[0]) if r_generic_non_id_raw is not None else None
+        r_generic_non_id = (
+            bool(r_generic_non_id_raw[0]) if r_generic_non_id_raw is not None else None
+        )
 
-        assert (
-            py_generic_non_id == r_generic_non_id
-        ), f"SEMID generic non-ID differs for n={n}, seed={seed}"
+        assert py_generic_non_id == r_generic_non_id, (
+            f"SEMID generic non-ID differs for n={n}, seed={seed}"
+        )
 
 
 # =============================================================================
@@ -977,3 +1019,283 @@ class TestParameterVariations:
         r_solved = extract_r_solved_edges(r_result, n)
 
         assert py_solved == r_solved
+
+
+# =============================================================================
+# Edgewise + Trek Separation Identification Tests
+# =============================================================================
+
+
+class TestEdgewiseTSIdentification:
+    """Test edgewise + trek separation identification matches R implementation."""
+
+    @pytest.mark.parametrize("graph_id", get_test_graph_ids())
+    def test_edgewise_ts_solved_edges(self, graph_id, r_semid, r_converter):
+        """Test that edgewiseTSID identifies the same edges as R."""
+        graph_data = TEST_GRAPHS[graph_id]
+        L, O = graph_data["L"], graph_data["O"]
+        n = L.shape[0]
+
+        py_graph = MixedGraph(L, O)
+        py_result = edgewise_ts_id(py_graph)
+
+        with localconverter(r_converter):
+            r_graph = r_semid.MixedGraph(L, O)
+            r_result = r_semid.edgewiseTSID(r_graph)
+
+        py_solved = extract_py_solved_edges(py_result)
+        r_solved = extract_r_solved_edges(r_result, n)
+
+        assert py_solved == r_solved, f"Solved edges differ for {graph_id}"
+
+    @pytest.mark.parametrize("graph_id", get_test_graph_ids())
+    def test_edgewise_ts_identifier_function(self, graph_id, r_semid, r_converter):
+        """Test that edgewiseTSID identifier function produces same results as R."""
+        graph_data = TEST_GRAPHS[graph_id]
+        L, O = graph_data["L"], graph_data["O"]
+        n = L.shape[0]
+
+        py_graph = MixedGraph(L, O)
+        py_result = edgewise_ts_id(py_graph)
+
+        with localconverter(r_converter):
+            r_graph = r_semid.MixedGraph(L, O)
+            r_result = r_semid.edgewiseTSID(r_graph)
+
+        compare_identifier_outputs(
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            n,
+            r_converter,
+            L=L,
+            O=O,
+        )
+
+
+# =============================================================================
+# Latent-factor half-trek criterion identification Tests
+# =============================================================================
+
+# Test graphs for LFHTC (LatentDigraph where latent nodes are sources)
+# Note: Some edge cases removed due to R package bugs:
+# - Graphs with single latent child per latent node (R combn error "n < m")
+# - Graphs with only one sibling pair (R indicesOmega vector indexing error)
+LFHTC_TEST_GRAPHS = {
+    "shared_latent": {
+        # 3 observed (0, 1, 2), 1 latent (3)
+        # obs: 0 -> 1, latent -> all observed
+        "L": np.array(
+            [[0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 1, 1, 0]],
+            dtype=float,
+        ),
+        "num_observed": 3,
+    },
+    "complex_latent": {
+        # 3 observed (0, 1, 2), 2 latents (3, 4)
+        # obs: 0 -> 1 -> 2
+        # L1 -> 0, L1 -> 1
+        # L2 -> 1, L2 -> 2
+        "L": np.array(
+            [
+                [0, 1, 0, 0, 0],
+                [0, 0, 1, 0, 0],
+                [0, 0, 0, 0, 0],
+                [1, 1, 0, 0, 0],
+                [0, 1, 1, 0, 0],
+            ],
+            dtype=float,
+        ),
+        "num_observed": 3,
+    },
+}
+
+
+def get_lfhtc_test_graph_ids():
+    """Get list of LFHTC test graph IDs for parametrization."""
+    return list(LFHTC_TEST_GRAPHS.keys())
+
+
+def generate_random_latent_digraph(
+    num_observed: int,
+    num_latents: int,
+    edge_prob: float,
+    seed: int,
+) -> np.ndarray:
+    """
+    Generate a random LatentDigraph adjacency matrix valid for LFHTC.
+
+    Requirements to avoid R bugs:
+    - Latent nodes must be sources (no parents)
+    - Each latent must have at least 2 children (avoids R combn "n < m" error)
+    - Must have at least 2 sibling pairs total (avoids R indicesOmega vector error)
+      This requires at least one latent with 3+ children, or multiple latents sharing children
+
+    Args:
+        num_observed: Number of observed nodes (0 to num_observed-1)
+        num_latents: Number of latent nodes (num_observed to num_observed+num_latents-1)
+        edge_prob: Probability of edge between observed nodes
+        seed: Random seed
+
+    Returns:
+        Adjacency matrix L of shape (num_observed + num_latents, num_observed + num_latents)
+    """
+    rng = np.random.default_rng(seed)
+    n = num_observed + num_latents
+
+    L = np.zeros((n, n), dtype=float)
+
+    # Add random edges between observed nodes (no self-loops)
+    for i in range(num_observed):
+        for j in range(num_observed):
+            if i != j and rng.random() < edge_prob:
+                L[i, j] = 1
+
+    # First latent gets at least 3 children to ensure >= 2 sibling pairs
+    first_latent = num_observed
+    num_children_first = rng.integers(3, max(4, num_observed + 1))
+    children_first = rng.choice(
+        num_observed, size=min(num_children_first, num_observed), replace=False
+    )
+    for child in children_first:
+        L[first_latent, child] = 1
+
+    # Other latents get at least 2 children each
+    for latent in range(num_observed + 1, n):
+        num_children = rng.integers(2, max(3, num_observed + 1))
+        children = rng.choice(
+            num_observed, size=min(num_children, num_observed), replace=False
+        )
+        for child in children:
+            L[latent, child] = 1
+
+    return L
+
+
+def get_random_lfhtc_seeds():
+    """Get seeds for random LFHTC test generation."""
+    return list(range(10))
+
+
+class TestLFHTCIdentification:
+    """Test latent-factor half-trek criterion identification matches R implementation."""
+
+    @pytest.mark.parametrize("graph_id", get_lfhtc_test_graph_ids())
+    def test_lf_htc_solved_edges(self, graph_id, r_semid, r_converter):
+        """Test that lfhtcID identifies the same edges as R."""
+        graph_data = LFHTC_TEST_GRAPHS[graph_id]
+        L = graph_data["L"]
+        num_observed = graph_data["num_observed"]
+
+        py_graph = LatentDigraph(L, num_observed=num_observed)
+        py_result = lf_htc_id(py_graph)
+
+        with localconverter(r_converter):
+            # R LatentDigraph uses 1-based node lists as IntVectors
+            observed_nodes_r = ro.IntVector(range(1, num_observed + 1))
+            latent_nodes_r = ro.IntVector(range(num_observed + 1, L.shape[0] + 1))
+            r_graph = r_semid.LatentDigraph(L, observed_nodes_r, latent_nodes_r)
+            r_result = r_semid.lfhtcID(r_graph)
+
+        py_solved = extract_py_solved_edges(py_result)
+        r_solved = extract_r_solved_edges(r_result, num_observed)
+
+        assert py_solved == r_solved, f"Solved edges differ for {graph_id}"
+
+    @pytest.mark.parametrize("graph_id", get_lfhtc_test_graph_ids())
+    def test_lf_htc_unsolved_edges(self, graph_id, r_semid, r_converter):
+        """Test that lfhtcID has same unsolved edges as R."""
+        graph_data = LFHTC_TEST_GRAPHS[graph_id]
+        L = graph_data["L"]
+        num_observed = graph_data["num_observed"]
+
+        py_graph = LatentDigraph(L, num_observed=num_observed)
+        py_result = lf_htc_id(py_graph)
+
+        with localconverter(r_converter):
+            observed_nodes_r = ro.IntVector(range(1, num_observed + 1))
+            latent_nodes_r = ro.IntVector(range(num_observed + 1, L.shape[0] + 1))
+            r_graph = r_semid.LatentDigraph(L, observed_nodes_r, latent_nodes_r)
+            r_result = r_semid.lfhtcID(r_graph)
+
+        py_unsolved = extract_py_unsolved_edges(py_result)
+        r_unsolved = extract_r_unsolved_edges(r_result, num_observed)
+
+        assert py_unsolved == r_unsolved, f"Unsolved edges differ for {graph_id}"
+
+    @pytest.mark.parametrize("graph_id", get_lfhtc_test_graph_ids())
+    def test_lf_htc_identifier_function(self, graph_id, r_semid, r_converter):
+        """Test that lfhtcID identifier function produces same results as R."""
+        graph_data = LFHTC_TEST_GRAPHS[graph_id]
+        L = graph_data["L"]
+        num_observed = graph_data["num_observed"]
+        n = L.shape[0]
+
+        py_graph = LatentDigraph(L, num_observed=num_observed)
+        py_result = lf_htc_id(py_graph)
+
+        with localconverter(r_converter):
+            observed_nodes_r = ro.IntVector(range(1, num_observed + 1))
+            latent_nodes_r = ro.IntVector(range(num_observed + 1, n + 1))
+            r_graph = r_semid.LatentDigraph(L, observed_nodes_r, latent_nodes_r)
+            r_result = r_semid.lfhtcID(r_graph)
+
+        # Identifier works with covariance matrices of observed nodes only
+        compare_identifier_outputs(
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            num_observed,
+            r_converter,
+        )
+
+    @pytest.mark.parametrize("seed", get_random_lfhtc_seeds())
+    def test_lf_htc_random_solved_edges(self, seed, r_semid, r_converter):
+        """Test lfhtcID on random graphs - solved edges match R."""
+        # Generate random graph with varying sizes
+        rng = np.random.default_rng(seed)
+        num_observed = rng.integers(3, 6)
+        num_latents = rng.integers(1, 3)
+        edge_prob = rng.uniform(0.2, 0.5)
+
+        L = generate_random_latent_digraph(num_observed, num_latents, edge_prob, seed)
+        n = L.shape[0]
+
+        py_graph = LatentDigraph(L, num_observed=num_observed)
+        py_result = lf_htc_id(py_graph)
+
+        with localconverter(r_converter):
+            observed_nodes_r = ro.IntVector(range(1, num_observed + 1))
+            latent_nodes_r = ro.IntVector(range(num_observed + 1, n + 1))
+            r_graph = r_semid.LatentDigraph(L, observed_nodes_r, latent_nodes_r)
+            r_result = r_semid.lfhtcID(r_graph)
+
+        py_solved = extract_py_solved_edges(py_result)
+        r_solved = extract_r_solved_edges(r_result, num_observed)
+
+        assert py_solved == r_solved, f"Solved edges differ for random seed {seed}"
+
+    @pytest.mark.parametrize("seed", get_random_lfhtc_seeds())
+    def test_lf_htc_random_identifier(self, seed, r_semid, r_converter):
+        """Test lfhtcID identifier on random graphs - outputs match R."""
+        rng = np.random.default_rng(seed)
+        num_observed = rng.integers(3, 6)
+        num_latents = rng.integers(1, 3)
+        edge_prob = rng.uniform(0.2, 0.5)
+
+        L = generate_random_latent_digraph(num_observed, num_latents, edge_prob, seed)
+        n = L.shape[0]
+
+        py_graph = LatentDigraph(L, num_observed=num_observed)
+        py_result = lf_htc_id(py_graph)
+
+        with localconverter(r_converter):
+            observed_nodes_r = ro.IntVector(range(1, num_observed + 1))
+            latent_nodes_r = ro.IntVector(range(num_observed + 1, n + 1))
+            r_graph = r_semid.LatentDigraph(L, observed_nodes_r, latent_nodes_r)
+            r_result = r_semid.lfhtcID(r_graph)
+
+        compare_identifier_outputs(
+            py_result.identifier,
+            get_r_list_element(r_result, "identifier"),
+            num_observed,
+            r_converter,
+        )

@@ -311,14 +311,8 @@ def lf_htc_identify_step(
                             (default: None, meaning no limit).
 
     Returns:
-        dict with:
-            - `identified_edges`: List of newly identified edges as (parent, child) tuples
-            - `unsolved_parents`: Updated unsolved parents
-            - `solved_parents`: Updated solved parents
-            - `identifier`: Updated identifier function
-            - `active_froms`: Updated active_froms
-            - `Zs`: Updated Zs
-            - `Ls`: Updated Ls
+        LfhtcIdentifyStepResult with identified_edges, unsolved_parents,
+        solved_parents, identifier, active_froms, Zs, and Ls
     """
     # Sanity check
     validate_latent_nodes_are_sources(graph)
@@ -349,9 +343,6 @@ def lf_htc_identify_step(
     for i in [node for node in observed_nodes if node not in solved_nodes]:
         # Collect basic info of unsolved node i
         all_parents = graph.parents([i])
-
-        # TODO: latent_parents unused
-        # latent_parents = [p for p in all_parents if p in latent_nodes]
 
         observed_parents = [p for p in all_parents if p in observed_nodes]
 

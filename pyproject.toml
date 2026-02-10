@@ -6,12 +6,12 @@ readme = "README.md"
 authors = [
     { name = "tuomas", email = "ty.pirhonen@tum.de" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "igraph>=0.11.9",
-    "matplotlib>=3.10.8",
-    "numpy>=2.3.3",
-    "scipy>=1.16.3",
+    "matplotlib>=3.9",
+    "numpy>=2.0",
+    "scipy>=1.13",
 ]
 
 [tool.pyrefly]

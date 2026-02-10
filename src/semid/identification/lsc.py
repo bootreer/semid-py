@@ -8,6 +8,7 @@ from scipy.optimize import linprog
 from semid.latent_digraph import LatentDigraph
 
 from .lfhtc import subsets_of_size
+from .types import LscIDResult
 
 # Numerical tolerances matching R implementation's exact equality philosophy
 STRICT_ATOL = 1e-9
@@ -414,7 +415,7 @@ def allowed_nodes_for_z(
     des_h2 = g.cov.descendants(H2, include_latents=False)
 
     allowed_nodes = (set(tr_from_h1) | set(des_h2)) & set(S)
-    allowed_nodes = list(allowed_nodes - {v} - set(semi_parents_of_v))
+    allowed_nodes = sorted(allowed_nodes - {v} - set(semi_parents_of_v))
 
     return allowed_nodes
 
@@ -453,7 +454,7 @@ def allowed_nodes_for_y(
     observed_set = set(g_orig.observed_nodes())
     ext_latent_tr = observed_set & set(g_orig.descendants(latent_tr_from_z_and_v))
     not_allowed = (ext_latent_tr - set(S)) | set(latent_tr_from_z_and_v)
-    allowed = list(observed_set - not_allowed)
+    allowed = sorted(observed_set - not_allowed)
 
     return allowed
 
@@ -569,7 +570,7 @@ def _generate_h1_h2_combinations(latent_nodes: list[int], max_k: int):
                     yield i, H1, H2
 
 
-def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> dict:
+def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> LscIDResult:
     """
     Determine which edges in a latent digraph are LSC-identifiable.
 
@@ -582,8 +583,8 @@ def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> dict:
                               (default None, meaning no limit)
 
     Returns:
-        Dictionary with 'S' (identified nodes), 'Ys', 'Zs', 'H1s', 'H2s',
-        'trekSystems', and 'id' (whether all nodes are identified)
+        LscIDResult with identified nodes, Y/Z/H1/H2 sets, trek systems,
+        and whether all nodes are identified
     """
     # Build auxiliary graphs
     lg = LatentSubgraph(g)
@@ -653,12 +654,12 @@ def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> dict:
 
     identifiable = len(S) == len(observed_nodes)
 
-    return {
-        "S": S,
-        "Ys": Ys,
-        "Zs": Zs,
-        "H1s": H1s,
-        "H2s": H2s,
-        "trekSystems": trek_systems,
-        "id": identifiable,
-    }
+    return LscIDResult(
+        S=S,
+        Ys=Ys,
+        Zs=Zs,
+        H1s=H1s,
+        H2s=H2s,
+        trek_systems=trek_systems,
+        identified=identifiable,
+    )

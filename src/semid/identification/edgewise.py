@@ -155,11 +155,8 @@ def edgewise_identify_step(
         `subset_size_control`: Controls subset search size (default 3)
 
     Returns:
-        dict with:
-            - `identified_edges`: List of newly identified edges as (parent, child) tuples
-            - `unsolved_parents`: Updated unsolved parents
-            - `solved_parents`: Updated solved parents
-            - `identifier`: Updated identifier function
+        IdentifyStepResult with identified_edges, unsolved_parents,
+        solved_parents, and identifier
     """
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))

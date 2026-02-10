@@ -18,7 +18,7 @@ def create_htc_identifier(
     htr_sources: list[int],
 ) -> Callable[[NDArray], IdentifierResult]:
     """
-    Creates an htc idenfication function.
+    Creates an htc identification function.
 
     Creates an identifier function based on its given paramets. This created
     identifier function will identify the directed edges from `targets` to `node`.
@@ -72,7 +72,7 @@ def htc_identify_step(
     max_trek_depth: int | None = None,
 ) -> IdentifyStepResult:
     """
-    Perform one iteration of HTC idenfication.
+    Perform one iteration of HTC identification.
 
     This function performs one step through all the nodes in the mixed graph
     and tries to identify new edge coefficients using the existence of half-trek
@@ -86,11 +86,8 @@ def htc_identify_step(
         `max_trek_depth`: Maximum trek depth for half-trek reachability. None = unlimited.
 
     Returns:
-        dict with:
-            - `identified_edges`: List of newly identified edges as (parent, child) tuples
-            - `unsolved_parents`: Updated unsolved parents
-            - `solved_parents`: Updated solved parents
-            - `identifier`: Updated identifier function
+        IdentifyStepResult with identified_edges, unsolved_parents,
+        solved_parents, and identifier
     """
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))

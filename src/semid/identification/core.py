@@ -29,9 +29,9 @@ def general_generic_id(
     Args:
         `mixed_graph`: The mixed graph to identify
         `id_step_functions`: List of identification step functions to apply
-        `tian_decompose`: Whether to use Tian decomposition. In general,
-                        enabling this will make the (default: False) will make
-                        the algorithm faster and more powerful
+        `tian_decompose`: Whether to use Tian decomposition (default: False).
+                        In general, enabling this will make the algorithm
+                        faster and more powerful
 
     Returns:
         GenericIDResult with solved/unsolved edges and identifier function

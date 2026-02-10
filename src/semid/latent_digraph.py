@@ -20,7 +20,7 @@ class LatentDigraph:
     num_latents: int
     """Number of latent nodes (remaining rows of adj matrix)"""
 
-    _tr_graph: ig.Graph | None = None
+    _tr_graph: ig.Graph | None
     """Cached trek graph"""
 
     def __init__(
@@ -38,7 +38,7 @@ class LatentDigraph:
         """
         self.adj = utils.reshape_arr(adj, nodes)
         utils.validate_matrix(self.adj)
-        self.digraph = ig.Graph.Adjacency(matrix=adj, mode="directed")
+        self.digraph = ig.Graph.Adjacency(matrix=self.adj, mode="directed")
 
         if num_observed is None:
             num_observed = self.adj.shape[0]
@@ -48,6 +48,7 @@ class LatentDigraph:
 
         self.num_observed = num_observed
         self.num_latents = self.adj.shape[0] - num_observed
+        self._tr_graph = None
 
     @property
     def num_nodes(self) -> int:
@@ -235,8 +236,8 @@ class LatentDigraph:
     def tr_from(
         self,
         nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
         include_observed: bool = True,
         include_latents: bool = True,
         max_depth: int | None = None,
@@ -257,6 +258,11 @@ class LatentDigraph:
         Returns:
             List of trek-reachable node indices
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+
         if self._tr_graph is None:
             self._tr_graph = self._create_tr_graph()
 
@@ -308,8 +314,8 @@ class LatentDigraph:
     def htr_from(
         self,
         nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
         include_observed: bool = True,
         include_latents: bool = True,
         max_depth: int | None = None,
@@ -332,9 +338,15 @@ class LatentDigraph:
         Returns:
             List of half-trek-reachable node indices
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+
         # Half-trek: avoid all nodes on the left except the starting nodes
         all_nodes = list(range(self.num_nodes))
-        additional_avoid = [n for n in all_nodes if n not in nodes]
+        nodes_set = set(nodes)
+        additional_avoid = [n for n in all_nodes if n not in nodes_set]
         combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
 
         return self.tr_from(
@@ -387,10 +399,10 @@ class LatentDigraph:
         self,
         from_nodes: list[int],
         to_nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
-        avoid_left_edges: list[tuple[int, int]] = [],
-        avoid_right_edges: list[tuple[int, int]] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_left_edges: list[tuple[int, int]] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
     ) -> TrekSystem:
         """
         Determines if a trek system exists in the latent digraph.
@@ -412,6 +424,15 @@ class LatentDigraph:
         Returns:
             TrekSystem with system_exists and active_from fields
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+        if avoid_left_edges is None:
+            avoid_left_edges = []
+        if avoid_right_edges is None:
+            avoid_right_edges = []
+
         m = self.num_nodes
         cap, SOURCE, SINK = self._create_trek_flow_graph()
 

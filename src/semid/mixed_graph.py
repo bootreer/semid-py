@@ -1,3 +1,4 @@
+from collections import deque
 from typing import Optional, overload
 
 import igraph as ig
@@ -23,8 +24,8 @@ class MixedGraph:
     internal: LatentDigraph
     """Internal representation as LatentDigraph with latent confounders"""
 
-    c_components: list[CComponent] | None = None
-    _tian_node_map: dict[int, CComponent] | None = None
+    c_components: list[CComponent] | None
+    _tian_node_map: dict[int, CComponent] | None
 
     _vertex_nums: list[int]
 
@@ -44,6 +45,8 @@ class MixedGraph:
             nodes: Optional hint for reshaping arrays
             vertex_nums: Optional list of original vertex IDs. If None, uses [0, 1, 2, ...]
         """
+        self.c_components = None
+        self._tian_node_map = None
         self.d_adj = utils.reshape_arr(d_adj, nodes)
         self.b_adj = utils.reshape_arr(b_adj, nodes)
         utils.validate_matrices(self.d_adj, self.b_adj)
@@ -105,7 +108,9 @@ class MixedGraph:
         """
         latent = lg.latent_nodes()
         if len(lg.parents(latent)):
-            raise ValueError("MixedGraph can only be created from a LatentDigraph when latent nodes have no parents")
+            raise ValueError(
+                "MixedGraph can only be created from a LatentDigraph when latent nodes have no parents"
+            )
 
         latentL = lg.adj.copy()
         observed = lg.observed_nodes()
@@ -118,9 +123,7 @@ class MixedGraph:
         if len(observed) >= 1:
             for i in observed:
                 reachable = llg.tr_from(
-                    nodes=[i],
-                    include_observed=True,
-                    include_latents=False
+                    nodes=[i], include_observed=True, include_latents=False
                 )
                 for j in reachable:
                     O[i, j] = 1
@@ -187,8 +190,8 @@ class MixedGraph:
     def tr_from(
         self,
         nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
         max_depth: int | None = None,
     ) -> list[int]:
         """
@@ -207,6 +210,11 @@ class MixedGraph:
         Returns:
             List of trek-reachable node indices (external vertex IDs)
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+
         # Convert external IDs to internal indices
         internal_nodes = self.to_internal(nodes)
         internal_avoid_left = (
@@ -231,8 +239,8 @@ class MixedGraph:
     def htr_from(
         self,
         nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
         max_depth: int | None = None,
     ) -> list[int]:
         """
@@ -250,9 +258,15 @@ class MixedGraph:
         Returns:
             List of half-trek-reachable node indices (external vertex IDs)
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+
         # Half-trek: avoid all nodes on the left except the starting nodes
         all_nodes = self.nodes
-        additional_avoid = [n for n in all_nodes if n not in nodes]
+        nodes_set = set(nodes)
+        additional_avoid = [n for n in all_nodes if n not in nodes_set]
         combined_avoid_left = list(set(avoid_left_nodes) | set(additional_avoid))
 
         return self.tr_from(
@@ -410,10 +424,10 @@ class MixedGraph:
         self,
         from_nodes: list[int],
         to_nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
-        avoid_left_edges: list[tuple[int, int]] = [],
-        avoid_right_edges: list[tuple[int, int]] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_left_edges: list[tuple[int, int]] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
     ) -> TrekSystem:
         """
         Determines if a trek system exists in the mixed graph.
@@ -432,6 +446,15 @@ class MixedGraph:
         Returns:
             TrekSystem (with external vertex IDs)
         """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+        if avoid_left_edges is None:
+            avoid_left_edges = []
+        if avoid_right_edges is None:
+            avoid_right_edges = []
+
         # Convert all external IDs to internal indices
         internal_from = self.to_internal(from_nodes)
         internal_to = self.to_internal(to_nodes)
@@ -479,9 +502,9 @@ class MixedGraph:
         self,
         from_nodes: list[int],
         to_nodes: list[int],
-        avoid_left_nodes: list[int] = [],
-        avoid_right_nodes: list[int] = [],
-        avoid_right_edges: list[tuple[int, int]] = [],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
     ) -> TrekSystem:
         """
         Determines if a half-trek system exists in the mixed graph.
@@ -830,7 +853,7 @@ class MixedGraph:
             return self._tian_node_map[node]
 
         raise ValueError(
-            f"No Tian component found for node {node}, was the node mispecified?"
+            f"No Tian component found for node {node}, was the node misspecified?"
         )
 
     #############################################
@@ -880,11 +903,11 @@ class MixedGraph:
         reachable = {node}
         avoid_set = set(sub_nodes)
 
-        queue = [node]
+        queue = deque([node])
         visited = {node}
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
 
             neighbors = self.bidirected.neighbors(current, mode="out")
             for neighbor in neighbors:

@@ -96,7 +96,7 @@ class GenericIDResult:
         lines.append(f"  {bidir_str}")
         lines.append("")
 
-        if num_solved_dir < num_dir_edges:
+        if num_solved_bi < num_bi_edges:
             num_unsolved = num_bi_edges - num_solved_bi
             lines.append(f"Unidentified bidir. edges: {num_unsolved}")
 
@@ -242,6 +242,30 @@ class LfhtcIDResult:
             lines.append("No edges identified")
 
         return "\n".join(lines)
+
+
+@dataclass(slots=True)
+class LscIDResult:
+    """
+    Result from LSC (Latent Subgraph Criterion) identification.
+
+    Attributes:
+        S: List of identified (solved) observed nodes
+        Ys: Y nodes for each observed node
+        Zs: Z nodes for each observed node
+        H1s: H1 latent node sets for each observed node
+        H2s: H2 latent node sets for each observed node
+        trek_systems: Trek systems for each observed node
+        identified: Whether all observed nodes are identified
+    """
+
+    S: list[int]
+    Ys: list[list[int]]
+    Zs: list[list[int]]
+    H1s: list[list[int]]
+    H2s: list[list[int]]
+    trek_systems: list[list]
+    identified: bool
 
 
 @dataclass(slots=True)

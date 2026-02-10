@@ -133,11 +133,8 @@ def ancestral_identify_step(
         `identifier`: Current identifier function
 
     Returns:
-        dict with:
-            - `identified_edges`: List of newly identified edges as (parent, child) tuples
-            - `unsolved_parents`: Updated unsolved parents
-            - `solved_parents`: Updated solved parents
-            - `identifier`: Updated identifier function
+        IdentifyStepResult with identified_edges, unsolved_parents,
+        solved_parents, and identifier
     """
     identified_edges = []
     all_nodes = mixed_graph.nodes
