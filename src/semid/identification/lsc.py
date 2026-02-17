@@ -283,7 +283,9 @@ def _construct_path_system(
     # Check if solution is integer using STRICT tolerance (matching R implementation)
     # R uses: !all(lpRes$solution - round(lpRes$solution) == 0)
     # We use strict tolerance to match R's exact equality philosophy
-    if not np.allclose(solution, np.round(solution), atol=STRICT_ATOL, rtol=STRICT_RTOL):
+    if not np.allclose(
+        solution, np.round(solution), atol=STRICT_ATOL, rtol=STRICT_RTOL
+    ):
         return []
 
     solution = np.round(solution).astype(int)
@@ -307,7 +309,9 @@ def _construct_path_system(
             iterations = 0
             while current != t and iterations < max_iterations:
                 iterations += 1
-                next_edge = next(((u, v) for u, v in active_edges_main if u == current), None)
+                next_edge = next(
+                    ((u, v) for u, v in active_edges_main if u == current), None
+                )
                 if next_edge is None:
                     break
                 path.append(next_edge)
@@ -331,7 +335,9 @@ def _construct_path_system(
             iterations = 0
             while current != t and iterations < max_iterations:
                 iterations += 1
-                next_edge = next(((u, v) for u, v in active_edges_sub if u == current), None)
+                next_edge = next(
+                    ((u, v) for u, v in active_edges_sub if u == current), None
+                )
                 if next_edge is None:
                     break
                 path.append(next_edge)

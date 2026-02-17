@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Literal
 
 import igraph as ig
@@ -7,6 +9,7 @@ from numpy.typing import NDArray
 from semid import utils
 from semid.utils import TrekSystem
 from collections import deque
+
 
 class LatentDigraph:
     adj: NDArray[np.int32]

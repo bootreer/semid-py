@@ -241,12 +241,12 @@ def ancestral_identify_step(
                 vertex_nums=tian_comp.top_order,
             )
 
-            htr_from = set(tian_graph.htr_from([i]))
-            siblings = set(tian_graph.siblings(i))
-            solved_in = [s for s in solved_nodes if s in tian_graph.nodes]
+            htr_from = set(anc_graph.htr_from([i]))
+            siblings = set(anc_graph.siblings(i))
+            solved_in = [s for s in solved_nodes if s in anc_graph.nodes]
 
             allowed_nodes = set(solved_in) - siblings
-            allowed_nodes |= set(tian_graph.nodes) - htr_from
+            allowed_nodes |= set(anc_graph.nodes) - htr_from
             allowed_nodes_larger = sorted(allowed_nodes & set(tian_graph.nodes))
 
             if len(allowed_nodes_larger) >= len(node_parents):

@@ -158,6 +158,9 @@ def edgewise_identify_step(
         IdentifyStepResult with identified_edges, unsolved_parents,
         solved_parents, and identifier
     """
+    if subset_size_control <= 0:
+        raise ValueError("Invalid subset size control parameter.")
+
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))
 

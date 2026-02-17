@@ -18,7 +18,7 @@ from .htc import htc_identify_step
 def general_generic_id(
     mixed_graph: MixedGraph,
     id_step_functions: list[Callable],
-    tian_decompose: bool = False,
+    tian_decompose: bool = True,
 ) -> GenericIDResult:
     """
     General template for generic identification algorithms.
@@ -29,7 +29,7 @@ def general_generic_id(
     Args:
         `mixed_graph`: The mixed graph to identify
         `id_step_functions`: List of identification step functions to apply
-        `tian_decompose`: Whether to use Tian decomposition (default: False).
+        `tian_decompose`: Whether to use Tian decomposition (default: True).
                         In general, enabling this will make the algorithm
                         faster and more powerful
 
@@ -145,7 +145,7 @@ def semid(
     test_global_id: bool = True,
     test_generic_non_id: bool = True,
     id_step_functions: list[Callable] | None = None,
-    tian_decompose: bool = False,
+    tian_decompose: bool = True,
 ) -> SEMIDResult:
     """
     Identifiability of linear structural equation models.
@@ -160,7 +160,7 @@ def semid(
         `test_generic_non_id`: Whether to test generic non-identifiability
         `id_step_functions`: List of identification step functions to use.
                           Defaults to [htc_identify_step]
-        `tian_decompose`: Whether to use Tian decomposition (default False)
+        `tian_decompose`: Whether to use Tian decomposition (default: True)
 
     Returns:
         SEMIDResult with global/generic identifiability and identified edges
