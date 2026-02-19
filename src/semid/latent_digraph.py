@@ -243,7 +243,6 @@ class LatentDigraph:
         avoid_right_nodes: list[int] | None = None,
         include_observed: bool = True,
         include_latents: bool = True,
-        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are trek-reachable from the given nodes.
@@ -251,12 +250,11 @@ class LatentDigraph:
         A trek is a path that goes backwards along directed edges, then forwards.
 
         Args:
-            `nodes`: Nodes to start from
-            `avoid_left_nodes`: Nodes to avoid on the left (backward) side
-            `avoid_right_nodes`: Nodes to avoid on the right (forward) side
-            `include_observed`: Whether to include observed nodes in result
-            `include_latents`: Whether to include latent nodes in result
-            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
+            nodes: Nodes to start from
+            avoid_left_nodes: Nodes to avoid on the left (backward) side
+            avoid_right_nodes: Nodes to avoid on the right (forward) side
+            include_observed: Whether to include observed nodes in result
+            include_latents: Whether to include latent nodes in result
 
         Returns:
             List of trek-reachable node indices
@@ -278,23 +276,18 @@ class LatentDigraph:
         # Filter valid start nodes that are not in the avoid set
         valid_starts = [n for n in nodes if n not in avoid_set]
 
-        # Track depth for each node: (node, depth)
-        queue: deque[tuple[int, int]] = deque([(n, 0) for n in valid_starts])
+        queue: deque[int] = deque(valid_starts)
         visited: set[int] = set(valid_starts)
 
         while queue:
-            current, depth = queue.popleft()
-
-            # Check depth limit before exploring neighbors
-            if max_depth is not None and depth >= max_depth:
-                continue
+            current = queue.popleft()
 
             # Get outgoing neighbors
             neighbors = self._tr_graph.neighbors(current, mode="out")
             for neighbor in neighbors:
                 if neighbor not in visited and neighbor not in avoid_set:
                     visited.add(neighbor)
-                    queue.append((neighbor, depth + 1))
+                    queue.append(neighbor)
 
         # Convert back from trek graph node indices to original graph indices
         # Nodes 0..m-1 map to themselves, nodes m..2m-1 map to 0..m-1
@@ -321,7 +314,6 @@ class LatentDigraph:
         avoid_right_nodes: list[int] | None = None,
         include_observed: bool = True,
         include_latents: bool = True,
-        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are half-trek-reachable from the given nodes.
@@ -336,7 +328,6 @@ class LatentDigraph:
             avoid_right_nodes: Nodes to avoid on the right (forward) side
             include_observed: Whether to include observed nodes in result
             include_latents: Whether to include latent nodes in result
-            max_depth: Maximum trek depth (number of edges). None = unlimited.
 
         Returns:
             List of half-trek-reachable node indices
@@ -358,45 +349,95 @@ class LatentDigraph:
             avoid_right_nodes=avoid_right_nodes,
             include_observed=include_observed,
             include_latents=include_latents,
-            max_depth=max_depth,
         )
 
-    def _create_trek_flow_graph(self) -> tuple[NDArray[np.int32], int, int]:
+    def _build_flow_graph(
+        self,
+        trek_edges: list[tuple[int, int]] | set[tuple[int, int]],
+        from_nodes: list[int],
+        to_nodes: list[int],
+        avoid_left_nodes: list[int],
+        avoid_right_nodes: list[int],
+        trek_avoid_edges: set[tuple[int, int]],
+    ) -> tuple[ig.Graph, int, int]:
         """
-        Create a flow graph for computing trek systems.
+        Build a sparse flow graph for computing trek systems via max-flow.
 
-        The flow graph encodes vertex-disjoint trek paths using vertex capacities.
-        Each vertex in the trek graph is split into "in" and "out" parts with
-        capacity 1 between them to enforce vertex disjointness.
+        The flow graph encodes vertex-disjoint trek paths using vertex splitting.
+        Each trek graph vertex is split into "in" and "out" parts with a single
+        edge between them to enforce vertex disjointness.
 
-        Structure for m total nodes:
-        - Trek graph has M = 2m nodes (left and right copies)
-        - Flow graph has 2M + 2 nodes total:
-          - Nodes 0..M-1: "in" parts of trek graph vertices
-          - Nodes M..2M-1: "out" parts of trek graph vertices
-          - Node 2M: source
-          - Node 2M+1: sink
+        Node layout (N = 2*M + 2 total):
+          - 0..M-1     : in-parts of trek graph vertices
+          - M..2*M-1   : out-parts of trek graph vertices
+          - SOURCE=2*M, SINK=2*M+1
+
+        Args:
+            trek_edges: Trek graph edges to include (src, dst)
+            from_nodes: Source nodes connected to SOURCE
+            to_nodes: Target nodes connected to SINK
+            avoid_left_nodes: Left-copy nodes to block (vertex capacity = 0)
+            avoid_right_nodes: Right-copy nodes to block (vertex capacity = 0)
+            trek_avoid_edges: Trek graph edges to exclude
 
         Returns:
-            Tuple of (capacity_matrix, source_idx, sink_idx)
+            Tuple of (flow_graph, SOURCE, SINK)
         """
-        if self._tr_graph is None:
-            self._tr_graph = self._create_tr_graph()
-
         m = self.num_nodes
         M = 2 * m
         N = 2 * M + 2
         SOURCE = 2 * M
         SINK = 2 * M + 1
 
-        cap = np.zeros((N, N), dtype=np.int32)
+        avoid_left_set = set(avoid_left_nodes)
+        avoid_right_set = set(avoid_right_nodes)
 
-        tr_adj = np.array(self._tr_graph.get_adjacency().data, dtype=np.int32)
-        cap[M : 2 * M, 0:M] = tr_adj
+        edges = []
+
+        # Vertex-splitting: in-part i -> out-part M+i (capacity 1 each)
         for i in range(M):
-            cap[i, M + i] = 1
+            if i < m and i in avoid_left_set:
+                continue
+            if i >= m and (i - m) in avoid_right_set:
+                continue
+            edges.append((i, M + i))
 
-        return cap, SOURCE, SINK
+        # Trek edges: out-part of src -> in-part of dst
+        for src, dst in trek_edges:
+            if (src, dst) not in trek_avoid_edges:
+                edges.append((M + src, dst))
+
+        # Source -> left in-parts of from_nodes
+        for node in from_nodes:
+            edges.append((SOURCE, node))
+
+        # Right out-parts of to_nodes -> sink
+        for node in to_nodes:
+            edges.append((M + m + node, SINK))
+
+        return ig.Graph(n=N, edges=edges, directed=True), SOURCE, SINK
+
+    def _run_maxflow(
+        self,
+        flow_graph: ig.Graph,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        SOURCE: int,
+        SINK: int,
+    ) -> TrekSystem:
+        """Run max-flow and extract active_from nodes."""
+        flow_result = flow_graph.maxflow(SOURCE, SINK)
+
+        active_from = []
+        for node in from_nodes:
+            edge_id = flow_graph.get_eid(SOURCE, node, directed=True, error=False)
+            if edge_id != -1 and flow_result.flow[edge_id] > 0:
+                active_from.append(node)
+
+        return TrekSystem(
+            system_exists=flow_result.value == len(to_nodes),
+            active_from=active_from,
+        )
 
     def get_trek_system(
         self,
@@ -417,12 +458,127 @@ class LatentDigraph:
         This uses max-flow to find the maximum number of vertex-disjoint treks.
 
         Args:
-            `from_nodes`: Source nodes for treks (left side)
-            `to_nodes`: Target nodes for treks (right side)
-            `avoid_left_nodes`: Nodes that cannot appear on left (backward) side
-            `avoid_right_nodes`: Nodes that cannot appear on right (forward) side
-            `avoid_left_edges`: Edges (i,j) that cannot be traversed backward (j->i)
-            `avoid_right_edges`: Edges (i,j) that cannot be traversed forward (i->j)
+            from_nodes: Source nodes for treks (left side)
+            to_nodes: Target nodes for treks (right side)
+            avoid_left_nodes: Nodes that cannot appear on left (backward) side
+            avoid_right_nodes: Nodes that cannot appear on right (forward) side
+            avoid_left_edges: Edges (i,j) that cannot be traversed backward (j->i)
+            avoid_right_edges: Edges (i,j) that cannot be traversed forward (i->j)
+
+        Returns:
+            TrekSystem with system_exists and active_from fields
+        """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+        if avoid_left_edges is None:
+            avoid_left_edges = []
+        if avoid_right_edges is None:
+            avoid_right_edges = []
+
+        if self._tr_graph is None:
+            self._tr_graph = self._create_tr_graph()
+
+        m = self.num_nodes
+
+        # Build avoided edges in trek graph coordinates
+        trek_avoid_edges: set[tuple[int, int]] = set()
+        for i, j in avoid_left_edges:
+            trek_avoid_edges.add((j, i))
+        for i, j in avoid_right_edges:
+            trek_avoid_edges.add((m + i, m + j))
+
+        flow_graph, SOURCE, SINK = self._build_flow_graph(
+            trek_edges=self._tr_graph.get_edgelist(),
+            from_nodes=from_nodes,
+            to_nodes=to_nodes,
+            avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            trek_avoid_edges=trek_avoid_edges,
+        )
+
+        return self._run_maxflow(flow_graph, from_nodes, to_nodes, SOURCE, SINK)
+
+    def _bfs_reachable_trek_edges(
+        self,
+        from_nodes: list[int],
+        max_depth: int,
+        avoid_set: set[int],
+        avoid_edges: set[tuple[int, int]] | None = None,
+    ) -> set[tuple[int, int]]:
+        """
+        BFS on the trek graph to find edges reachable within max_depth steps.
+
+        Args:
+            from_nodes: Start nodes (original graph indices, mapped to left copies)
+            max_depth: Maximum BFS depth in the trek graph
+            avoid_set: Set of trek graph node indices to avoid
+            avoid_edges: Set of (src, dst) trek graph edges to avoid
+
+        Returns:
+            Set of (src, dst) edges in the trek graph that are reachable
+        """
+        if self._tr_graph is None:
+            self._tr_graph = self._create_tr_graph()
+
+        if avoid_edges is None:
+            avoid_edges = set()
+
+        # Start BFS from left copies of from_nodes
+        valid_starts = [n for n in from_nodes if n not in avoid_set]
+        queue: deque[tuple[int, int]] = deque([(n, 0) for n in valid_starts])
+        visited: set[int] = set(valid_starts)
+        reachable_edges: set[tuple[int, int]] = set()
+
+        while queue:
+            current, depth = queue.popleft()
+
+            if depth >= max_depth:
+                continue
+
+            neighbors = self._tr_graph.neighbors(current, mode="out")
+            for neighbor in neighbors:
+                if neighbor in avoid_set:
+                    continue
+                if (current, neighbor) in avoid_edges:
+                    continue
+                reachable_edges.add((current, neighbor))
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, depth + 1))
+
+        return reachable_edges
+
+    def get_trek_system_local(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        max_hops: int,
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_left_edges: list[tuple[int, int]] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
+    ) -> TrekSystem:
+        """
+        Depth-limited trek system using max-flow on a truncated flow graph.
+
+        Like get_trek_system, but only considers treks of bounded length.
+        max_hops defines the number of edges in the original graph sense:
+        max_hops=1 means direct children/siblings only.
+
+        Internally, max_hops is converted to trek graph depth as max_hops + 1
+        (accounting for the bridge edge from left to right copy).
+
+        Args:
+            from_nodes: Source nodes for treks (left side)
+            to_nodes: Target nodes for treks (right side)
+            max_hops: Maximum number of hops in the original graph.
+                      1 = direct children/siblings, 2 = two edges, etc.
+            avoid_left_nodes: Nodes that cannot appear on left (backward) side
+            avoid_right_nodes: Nodes that cannot appear on right (forward) side
+            avoid_left_edges: Edges (i,j) that cannot be traversed backward (j->i)
+            avoid_right_edges: Edges (i,j) that cannot be traversed forward (i->j)
 
         Returns:
             TrekSystem with system_exists and active_from fields
@@ -437,61 +593,35 @@ class LatentDigraph:
             avoid_right_edges = []
 
         m = self.num_nodes
-        cap, SOURCE, SINK = self._create_trek_flow_graph()
 
-        # Connect source to left copies of from_nodes (these are the "in" parts)
-        # Left copies are at indices 0..m-1 in the trek graph
-        for node in from_nodes:
-            cap[SOURCE, node] = 1
+        # Convert max_hops to trek graph depth: bridge + forward edges
+        max_depth = max_hops + 1
 
-        # Connect right copies of to_nodes to sink (from the "out" parts)
-        # Right copies are at indices m..2m-1 in trek graph
-        # Out-parts are shifted by M in the flow graph
-        M = 2 * m
-        for node in to_nodes:
-            right_out = M + m + node  # Out-part of right copy
-            cap[right_out, SINK] = 1
+        # Build avoid set for BFS
+        avoid_set = set(avoid_left_nodes) | set(n + m for n in avoid_right_nodes)
 
-        # Apply vertex avoidances by setting vertex capacity to 0
-        # This blocks the edge from in-part to out-part
-        for node in avoid_left_nodes:
-            cap[node, M + node] = 0  # Block left copy of node
-
-        for node in avoid_right_nodes:
-            right_in = m + node  # Right copy in-part
-            cap[right_in, M + right_in] = 0  # Block right copy of node
-
-        # Apply edge avoidances
-        # Left edges are reversed in the trek graph (we go backward)
-        # If we want to avoid edge i->j on the left, we block j's out-part to i's in-part
+        # Build avoided edges in trek graph coordinates
+        trek_avoid_edges: set[tuple[int, int]] = set()
         for i, j in avoid_left_edges:
-            left_j_out = M + j  # Left copy of j, out-part
-            left_i_in = i  # Left copy of i, in-part
-            cap[left_j_out, left_i_in] = 0
-
-        # Right edges follow the original direction
-        # If we want to avoid edge i->j on the right, we block i's out-part to j's in-part
+            trek_avoid_edges.add((j, i))
         for i, j in avoid_right_edges:
-            right_i_out = M + m + i  # Right copy of i, out-part
-            right_j_in = m + j  # Right copy of j, in-part
-            cap[right_i_out, right_j_in] = 0
+            trek_avoid_edges.add((m + i, m + j))
 
-        flow_graph = ig.Graph.Adjacency(cap, mode="directed")
-        flow_result = flow_graph.maxflow(SOURCE, SINK)
-
-        # Determine which from_nodes are active by checking flow from SOURCE to each
-        active_from = []
-        for node in from_nodes:
-            # Get the edge ID from SOURCE to this from_node's in-part
-            # from_nodes connect to left copies which are at indices 0..m-1
-            edge_id = flow_graph.get_eid(SOURCE, node, directed=True, error=False)
-            if edge_id != -1 and flow_result.flow[edge_id] > 0:
-                active_from.append(node)
-
-        return TrekSystem(
-            system_exists=flow_result.value == len(to_nodes),
-            active_from=active_from,
+        # BFS to find reachable edges within max_depth
+        reachable_edges = self._bfs_reachable_trek_edges(
+            from_nodes, max_depth, avoid_set, trek_avoid_edges
         )
+
+        flow_graph, SOURCE, SINK = self._build_flow_graph(
+            trek_edges=reachable_edges,
+            from_nodes=from_nodes,
+            to_nodes=to_nodes,
+            avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            trek_avoid_edges=trek_avoid_edges,
+        )
+
+        return self._run_maxflow(flow_graph, from_nodes, to_nodes, SOURCE, SINK)
 
     def induced_subgraph(self, nodes: list[int]) -> LatentDigraph:
         new_adj = self.adj[nodes, :][:, nodes]

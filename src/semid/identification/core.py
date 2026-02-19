@@ -27,9 +27,9 @@ def general_generic_id(
     as many parameters as possible
 
     Args:
-        `mixed_graph`: The mixed graph to identify
-        `id_step_functions`: List of identification step functions to apply
-        `tian_decompose`: Whether to use Tian decomposition (default: True).
+        mixed_graph: The mixed graph to identify
+        id_step_functions: List of identification step functions to apply
+        tian_decompose: Whether to use Tian decomposition (default: True).
                         In general, enabling this will make the algorithm
                         faster and more powerful
 
@@ -155,12 +155,12 @@ def semid(
     identification algorithms.
 
     Args:
-        `mixed_graph`: The mixed graph to analyze
-        `test_global_id`: Whether to test global identifiability
-        `test_generic_non_id`: Whether to test generic non-identifiability
-        `id_step_functions`: List of identification step functions to use.
+        mixed_graph: The mixed graph to analyze
+        test_global_id: Whether to test global identifiability
+        test_generic_non_id: Whether to test generic non-identifiability
+        id_step_functions: List of identification step functions to use.
                           Defaults to [htc_identify_step]
-        `tian_decompose`: Whether to use Tian decomposition (default: True)
+        tian_decompose: Whether to use Tian decomposition (default: True)
 
     Returns:
         SEMIDResult with global/generic identifiability and identified edges

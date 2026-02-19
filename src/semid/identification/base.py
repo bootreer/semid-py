@@ -22,10 +22,10 @@ def tian_sigma_for_component(
     Sigma' corresponding to the c-component.
 
     Args:
-        `Sigma`: Covariance matrix for the mixed graph G
-        `internal`: Indices of internal nodes (in the bidirected component)
-        `incoming`: Indices of incoming nodes (parents of internal, not in component)
-        `top_order`: Topological ordering of internal + incoming nodes
+        Sigma: Covariance matrix for the mixed graph G
+        internal: Indices of internal nodes (in the bidirected component)
+        incoming: Indices of incoming nodes (parents of internal, not in component)
+        top_order: Topological ordering of internal + incoming nodes
 
     Returns:
         Transformed covariance matrix ordered by top_order
@@ -81,8 +81,8 @@ def create_identifier_base_case(
     Creates a base case identifier that returns NaN for unidentified parameters.
 
     Args:
-        `L`: Directed adjacency matrix (1 where edge exists, 0 otherwise)
-        `O`: Bidirected adjacency matrix (1 where edge exists, 0 otherwise)
+        L: Directed adjacency matrix (1 where edge exists, 0 otherwise)
+        O: Bidirected adjacency matrix (1 where edge exists, 0 otherwise)
 
     Returns:
         Function that takes covariance matrix and returns dict with Lambda and Omega
@@ -113,7 +113,7 @@ def create_simple_bidir_identifier(
     simultaneously.
 
     Args:
-        `base_identifier`: Identifier that identifies all directed edges
+        base_identifier: Identifier that identifies all directed edges
 
     Returns:
         Function that identifies everything

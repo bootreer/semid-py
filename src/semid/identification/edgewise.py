@@ -31,12 +31,12 @@ def create_edgewise_identifier(
     identify the directed edges from `targets` to `node`.
 
     Args:
-        `id_func`: Previous identifier function to compose with
-        `sources`: Source nodes of the half-trek system
-        `targets`: Target nodes of the half-trek system (should be parents of `node`)
-        `node`: The node whose incoming edges we're identifying
-        `solved_node_parents`: Already-solved parents of node (from previous steps)
-        `source_parents_to_remove`: A list of parents of sources that should have their edge
+        id_func: Previous identifier function to compose with
+        sources: Source nodes of the half-trek system
+        targets: Target nodes of the half-trek system (should be parents of `node`)
+        node: The node whose incoming edges we're identifying
+        solved_node_parents: Already-solved parents of node (from previous steps)
+        source_parents_to_remove: A list of parents of sources that should have their edge
                                    to their respective source removed
 
     Returns:
@@ -148,11 +148,11 @@ def edgewise_identify_step(
     half-trek systems as described in Weihs, Robeva, Robinson, et al. (2017).
 
     Args:
-        `mixed_graph`: The mixed graph
-        `unsolved_parents`: List of unsolved parent edges for each node
-        `solved_parents`: List of solved parent edges for each node
-        `identifier`: Current identifier function
-        `subset_size_control`: Controls subset search size (default 3)
+        mixed_graph: The mixed graph
+        unsolved_parents: List of unsolved parent edges for each node
+        solved_parents: List of solved parent edges for each node
+        identifier: Current identifier function
+        subset_size_control: Controls subset search size (default 3)
 
     Returns:
         IdentifyStepResult with identified_edges, unsolved_parents,
@@ -253,10 +253,10 @@ def edgewise_id(
     identifiable.
 
     Args:
-        `mixed_graph`: `MixedGraph` object representing the linear structural equation model
-        `subset_size_control`: Controls subset search size (default 3)
+        mixed_graph: `MixedGraph` object representing the linear structural equation model
+        subset_size_control: Controls subset search size (default 3)
                            Searches subsets of sizes 1..k and n-k+1..n
-        `tian_decompose`: Whether to use Tian decomposition (Default: True)
+        tian_decompose: Whether to use Tian decomposition (Default: True)
 
     Returns:
         GenericIDResult with identified edges and identifier function
@@ -295,10 +295,10 @@ def edgewise_ts_id(
     identify as many edges as possible, this may be very slow.
 
     Args:
-        `mixed_graph`: The mixed graph to analyze
-        `subset_size_control`: Max subset size for edgewise (default 3)
-        `max_subset_size`: Max subset size for trek separation (default 3)
-        `tian_decompose`: Whether to use Tian decomposition (default True)
+        mixed_graph: The mixed graph to analyze
+        subset_size_control: Max subset size for edgewise (default 3)
+        max_subset_size: Max subset size for trek separation (default 3)
+        tian_decompose: Whether to use Tian decomposition (default True)
 
     Returns:
         GenericIDResult with identified edges and identifier function

@@ -25,9 +25,9 @@ def _get_layout(
     Compute node positions using igraph layouts.
 
     Args:
-        `graph`: The igraph graph object
-        `layout`: The layout algorithm to use
-        `num_nodes`: Number of nodes in the graph
+        graph: The igraph graph object
+        layout: The layout algorithm to use
+        num_nodes: Number of nodes in the graph
 
     Returns:
         Node positions as (x, y) coordinates, shape (num_nodes, 2)
@@ -69,12 +69,12 @@ def _draw_directed_edges(
     Draw directed edges with arrows.
 
     Args:
-        `ax`: Matplotlib axes to draw on
-        `positions`: Node positions, shape (n, 2)
-        `adj_matrix`: Adjacency matrix for directed edges, shape (n, n)
-        `color`: Edge color
-        `width`: Edge width
-        `node_size`: Size of nodes for arrow shrinking (default 500)
+        ax: Matplotlib axes to draw on
+        positions: Node positions, shape (n, 2)
+        adj_matrix: Adjacency matrix for directed edges, shape (n, n)
+        color: Edge color
+        width: Edge width
+        node_size: Size of nodes for arrow shrinking (default 500)
     """
     n = len(positions)
     # Calculate shrink amount based on node size
@@ -114,12 +114,12 @@ def _draw_bidirected_edges(
     Draw bidirected edges with double-headed arrows.
 
     Args:
-        `ax`: Matplotlib axes to draw on
-        `positions`: Node positions, shape (n, 2)
-        `adj_matrix`: Adjacency matrix for bidirected edges, shape (n, n)
-        `color`: Edge color
-        `width`: Edge width
-        `node_size`: Size of nodes for arrow shrinking (default 500)
+        ax: Matplotlib axes to draw on
+        positions: Node positions, shape (n, 2)
+        adj_matrix: Adjacency matrix for bidirected edges, shape (n, n)
+        color: Edge color
+        width: Edge width
+        node_size: Size of nodes for arrow shrinking (default 500)
     """
     n = len(positions)
     drawn = set()
@@ -161,13 +161,13 @@ def _draw_nodes(
     Draw nodes as scatter plot with labels.
 
     Args:
-        `ax`: Matplotlib axes to draw on
-        `positions`: Node positions, shape (n, 2)
-        `labels`: Node labels
-        `size`: Node size
-        `color`: Node color
-        `shape`: Node shape marker
-        `zorder`: Z-order for layering (default 2)
+        ax: Matplotlib axes to draw on
+        positions: Node positions, shape (n, 2)
+        labels: Node labels
+        size: Node size
+        color: Node color
+        shape: Node shape marker
+        zorder: Z-order for layering (default 2)
     """
     ax.scatter(
         positions[:, 0],
@@ -212,19 +212,19 @@ def plot_mixed_graph(
     Plot a mixed graph with directed and bidirected edges.
 
     Args:
-        `graph`: The mixed graph to plot
-        `layout`: Layout algorithm - "auto", "circle", "fr" (Fruchterman-Reingold),
+        graph: The mixed graph to plot
+        layout: Layout algorithm - "auto", "circle", "fr" (Fruchterman-Reingold),
                  "kk" (Kamada-Kawai), "grid", or "tree". Default "auto" chooses
                  "circle" for ≤10 nodes, "fr" otherwise.
-        `node_labels`: Custom node labels. If None, uses graph.nodes (vertex_nums)
-        `node_size`: Size of nodes (default 500)
-        `node_color`: Color for nodes (default "#93c5fd")
-        `directed_edge_color`: Color for directed edges (default "#1e293b")
-        `bidirected_edge_color`: Color for bidirected edges (default "#dc2626")
-        `edge_width`: Width of edges (default 1.5)
-        `figsize`: Figure size if creating new figure (default (10, 8))
-        `ax`: Matplotlib axes to plot on. If None, creates new figure
-        `show`: Whether to call plt.show() (default True)
+        node_labels: Custom node labels. If None, uses graph.nodes (vertex_nums)
+        node_size: Size of nodes (default 500)
+        node_color: Color for nodes (default "#93c5fd")
+        directed_edge_color: Color for directed edges (default "#1e293b")
+        bidirected_edge_color: Color for bidirected edges (default "#dc2626")
+        edge_width: Width of edges (default 1.5)
+        figsize: Figure size if creating new figure (default (10, 8))
+        ax: Matplotlib axes to plot on. If None, creates new figure
+        show: Whether to call plt.show() (default True)
 
     Returns:
         Tuple of (matplotlib Figure, matplotlib Axes)
@@ -308,23 +308,23 @@ def plot_latent_digraph(
     Plot a latent digraph distinguishing observed and latent nodes.
 
     Args:
-        `graph`: The latent digraph to plot
-        `layout`: Layout algorithm - "auto", "circle", "fr", "kk", "grid", or "tree"
+        graph: The latent digraph to plot
+        layout: Layout algorithm - "auto", "circle", "fr", "kk", "grid", or "tree"
                  (default "auto")
-        `node_labels`: Custom node labels. If None, uses numeric indices
-        `observed_node_size`: Size of observed nodes (default 500)
-        `latent_node_size`: Size of latent nodes (default 400)
-        `observed_node_color`: Color for observed nodes (default "#93c5fd")
-        `latent_node_color`: Color for latent nodes (default "#d1d5db")
-        `observed_node_shape`: Shape for observed nodes (default "o" for circle)
-        `latent_node_shape`: Shape for latent nodes (default "s" for square)
-        `edge_color`: Color for edges from observed nodes (default "#1e293b")
-        `latent_edge_color`: Color for edges from latent nodes (default "#dc2626")
-        `edge_width`: Width of edges (default 1.5)
-        `show_latent`: Whether to display latent nodes (default True)
-        `figsize`: Figure size (default (10, 8))
-        `ax`: Matplotlib axes to plot on. If None, creates new figure
-        `show`: Whether to call plt.show() (default True)
+        node_labels: Custom node labels. If None, uses numeric indices
+        observed_node_size: Size of observed nodes (default 500)
+        latent_node_size: Size of latent nodes (default 400)
+        observed_node_color: Color for observed nodes (default "#93c5fd")
+        latent_node_color: Color for latent nodes (default "#d1d5db")
+        observed_node_shape: Shape for observed nodes (default "o" for circle)
+        latent_node_shape: Shape for latent nodes (default "s" for square)
+        edge_color: Color for edges from observed nodes (default "#1e293b")
+        latent_edge_color: Color for edges from latent nodes (default "#dc2626")
+        edge_width: Width of edges (default 1.5)
+        show_latent: Whether to display latent nodes (default True)
+        figsize: Figure size (default (10, 8))
+        ax: Matplotlib axes to plot on. If None, creates new figure
+        show: Whether to call plt.show() (default True)
 
     Returns:
         Tuple of (matplotlib Figure, matplotlib Axes)

@@ -28,12 +28,12 @@ def create_trek_separation_identifier(
     function will identify the directed edge from 'parent' to 'node.'
 
     Args:
-        `id_func`: Previous identifier function to compose with
-        `sources`: Source nodes for the trek system
-        `targets`: Target nodes (excluding parent and node)
-        `node`: The node whose incoming edge we're identifying
-        `parent`: The parent whose edge to node we're identifying
-        `solved_parents`: Already solved parents of node
+        id_func: Previous identifier function to compose with
+        sources: Source nodes for the trek system
+        targets: Target nodes (excluding parent and node)
+        node: The node whose incoming edge we're identifying
+        parent: The parent whose edge to node we're identifying
+        solved_parents: Already solved parents of node
 
     Returns:
         An identification function
@@ -134,11 +134,11 @@ def trek_separation_identify_step(
     described in Weihs, Robeva, Robinson, et al. (2017).
 
     Args:
-        `mixed_graph`: The mixed graph
-        `unsolved_parents`: List of unsolved parent edges for each node
-        `solved_parents`: List of solved parent edges for each node
-        `identifier`: Current identifier function
-        `max_subset_size`: Maximum subset size to consider (default 3)
+        mixed_graph: The mixed graph
+        unsolved_parents: List of unsolved parent edges for each node
+        solved_parents: List of solved parent edges for each node
+        identifier: Current identifier function
+        max_subset_size: Maximum subset size to consider (default 3)
 
     Returns:
         IdentifyStepResult with identified_edges, unsolved_parents,

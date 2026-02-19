@@ -66,13 +66,13 @@ def create_lf_identifier_base_case(
     identification functions for latent-factor graphs.
 
     Args:
-        `graph`: A LatentDigraph object representing the latent-factor graph.
+        graph: A LatentDigraph object representing the latent-factor graph.
                All latent nodes should be source nodes (i.e., have no parents).
 
     Returns:
         A function that takes a covariance matrix and returns a dict with:
-            - `Lambda`: Matrix with NA for unknown coefficients, 0 where no edge exists
-            - `Omega`: Matrix with NA for error covariances between siblings
+            - Lambda: Matrix with NA for unknown coefficients, 0 where no edge exists
+            - Omega: Matrix with NA for error covariances between siblings
     """
     L = graph.adj
     observed_nodes = graph.observed_nodes()
@@ -120,17 +120,17 @@ def create_lf_htc_identifier(
     identifier will identify the directed edges from 'parents' to 'v'.
 
     Args:
-        `id_func`: Identification of edge coefficients often requires that other
+        id_func: Identification of edge coefficients often requires that other
                 edge coefficients already be identified. This argument should be
                 a function that produces all such identifications. The newly created
                 identifier will return these identifications along with its own.
-        `v`: The node for which all incoming edges are to be identified
+        v: The node for which all incoming edges are to be identified
            (the tails of which are parents).
-        `Y`: The sources of the latent-factor half-trek system.
-        `Z`: The nodes that are reached from Y via a latent-factor half-trek of the
+        Y: The sources of the latent-factor half-trek system.
+        Z: The nodes that are reached from Y via a latent-factor half-trek of the
            form y <- h -> z where h is an element of L.
-        `parents`: The parents of node v (observed parents).
-        `reachable_y`: The nodes in `Y` which are latent-factor half-trek reachable
+        parents: The parents of node v (observed parents).
+        reachable_y: The nodes in `Y` which are latent-factor half-trek reachable
                     from `Z` or `v` by avoiding the nodes in L. All incoming edges to
                     these nodes should be identified by `id_func` for the newly created
                     identification function to work.
@@ -291,23 +291,23 @@ def lf_htc_identify_step(
     latent-factor half-trek systems.
 
     Args:
-        `graph`: A LatentDigraph object representing the latent-factor graph.
+        graph: A LatentDigraph object representing the latent-factor graph.
                All latent nodes should be source nodes (i.e., have no parents).
-        `unsolved_parents`: List whose ith index is a vector of all the parents
+        unsolved_parents: List whose ith index is a vector of all the parents
                          j of i in the graph for which the edge j->i is not yet
                          known to be generically identifiable.
-        `solved_parents`: Complement of unsolved_parents, a list whose ith index
+        solved_parents: Complement of unsolved_parents, a list whose ith index
                        is a vector of all parents j of i for which the edge j->i
                        is known to be generically identifiable.
-        `identifier`: An identification function that must produce the identifications
+        identifier: An identification function that must produce the identifications
                    corresponding to those in solved_parents.
-        `active_froms`: If node i is solved then the ith index is a vector
+        active_froms: If node i is solved then the ith index is a vector
                      containing the nodes Y, otherwise it is empty.
-        `Zs`: If node i is solved then the ith index is a vector
+        Zs: If node i is solved then the ith index is a vector
            containing the nodes Z, otherwise it is empty.
-        `Ls`: If node i is solved then the ith index is a vector
+        Ls: If node i is solved then the ith index is a vector
            containing the latent nodes L, otherwise it is empty.
-        `subset_size_control`: The largest subset of latent nodes to consider
+        subset_size_control: The largest subset of latent nodes to consider
                             (default: None, meaning no limit).
 
     Returns:
@@ -402,9 +402,9 @@ def lf_htc_id(
     latent digraph are generically identifiable.
 
     Args:
-        `graph`: A LatentDigraph object representing the latent-factor graph.
+        graph: A LatentDigraph object representing the latent-factor graph.
                All latent nodes should be source nodes (i.e., have no parents).
-        `subset_size_control`: Maximum size of latent node subsets to consider
+        subset_size_control: Maximum size of latent node subsets to consider
                            (default: None, meaning no limit)
 
     Returns:

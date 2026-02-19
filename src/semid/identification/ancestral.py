@@ -127,10 +127,10 @@ def ancestral_identify_step(
     on cyclic graphs.
 
     Args:
-        `mixed_graph`: The mixed graph
-        `unsolved_parents`: List of unsolved parent edges for each node
-        `solved_parents`: List of solved parent edges for each node
-        `identifier`: Current identifier function
+        mixed_graph: The mixed graph
+        unsolved_parents: List of unsolved parent edges for each node
+        solved_parents: List of solved parent edges for each node
+        identifier: Current identifier function
 
     Returns:
         IdentifyStepResult with identified_edges, unsolved_parents,
@@ -301,8 +301,8 @@ def ancestral_id(
     also works on cyclic graphs.
 
     Args:
-        `mixed_graph`: The mixed graph to analyze
-        `tian_decompose`: Whether to use Tian decomposition (default True)
+        mixed_graph: The mixed graph to analyze
+        tian_decompose: Whether to use Tian decomposition (default True)
 
     Returns:
         GenericIDResult with identified edges and identifier function

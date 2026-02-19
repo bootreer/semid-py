@@ -30,7 +30,7 @@ class LatentSubgraph:
         Initialize latent subgraph structures for LSC algorithm.
 
         Args:
-            `g`: The latent digraph to analyze
+            g: The latent digraph to analyze
         """
         self.cov = LatentSubgraph._latent_cov_graph(g)
         self.semidirect = LatentSubgraph._semidirect_effect_graph(g)
@@ -111,7 +111,7 @@ def _get_incidence_matrix(g: ig.Graph) -> NDArray[np.float64]:
     B[v,e] = 1 if edge e enters vertex v, and 0 otherwise.
 
     Args:
-        `g`: Input graph
+        g: Input graph
 
     Returns:
         Incidence matrix of shape (num_vertices, num_edges)
@@ -136,7 +136,7 @@ def _get_incoming_matrix(g: ig.Graph) -> NDArray[np.float64]:
     The incoming matrix M has M[v,e] = 1 if edge e enters vertex v, 0 otherwise.
 
     Args:
-        `g`: Input graph
+        g: Input graph
 
     Returns:
         Incoming matrix of shape (num_vertices, num_edges)
@@ -163,11 +163,11 @@ def joint_flow(
     to respect both graph g and its subgraph g_sub.
 
     Args:
-        `g`: Main flow graph
-        `g_sub`: Subgraph of g
-        `s`: Source vertex
-        `t`: Sink vertex
-        `integer`: If True, require integer solution (default False)
+        g: Main flow graph
+        g_sub: Subgraph of g
+        s: Source vertex
+        t: Sink vertex
+        integer: If True, require integer solution (default False)
 
     Returns:
         Dictionary with 'objval' (maximum flow), 'solution' (edge flow values),
@@ -269,11 +269,11 @@ def _construct_path_system(
     Construct path system from LP solution.
 
     Args:
-        `lp_res`: LP solution from joint_flow
-        `g`: Main graph
-        `g_sub`: Subgraph
-        `s`: Source vertex
-        `t`: Sink vertex
+        lp_res: LP solution from joint_flow
+        g: Main graph
+        g_sub: Subgraph
+        s: Source vertex
+        t: Sink vertex
 
     Returns:
         List of paths as edge sequences, or empty list if solution is not integer
@@ -282,7 +282,6 @@ def _construct_path_system(
 
     # Check if solution is integer using STRICT tolerance (matching R implementation)
     # R uses: !all(lpRes$solution - round(lpRes$solution) == 0)
-    # We use strict tolerance to match R's exact equality philosophy
     if not np.allclose(
         solution, np.round(solution), atol=STRICT_ATOL, rtol=STRICT_RTOL
     ):
@@ -357,12 +356,12 @@ def _construct_trek_system(
     Construct trek system from flow LP solution.
 
     Args:
-        `res`: LP solution
-        `flow_graph`: Flow graph
-        `flow_sub_graph`: Flow subgraph
-        `s`: Source vertex
-        `t`: Sink vertex
-        `m`: Number of nodes in original graph (before doubling)
+        res: LP solution
+        flow_graph: Flow graph
+        flow_sub_graph: Flow subgraph
+        s: Source vertex
+        t: Sink vertex
+        m: Number of nodes in original graph (before doubling)
 
     Returns:
         Dictionary with 'TrekSystem' and 'startNodes' keys
@@ -406,11 +405,11 @@ def allowed_nodes_for_z(
     Compute allowed nodes for Z given constraints.
 
     Args:
-        `g`: Latent subgraph structure
-        `v`: Target node
-        `S`: Set of identified nodes
-        `H1`: First latent node set
-        `H2`: Second latent node set
+        g: Latent subgraph structure
+        v: Target node
+        S: Set of identified nodes
+        H1: First latent node set
+        H2: Second latent node set
 
     Returns:
         Allowed nodes for Z
@@ -439,13 +438,13 @@ def allowed_nodes_for_y(
     Compute allowed nodes for Y given constraints.
 
     Args:
-        `g_orig`: Original latent digraph
-        `g`: Latent subgraph structure
-        `v`: Target node
-        `S`: Set of identified nodes
-        `Z`: Z node set
-        `H1`: First latent node set
-        `H2`: Second latent node set
+        g_orig: Original latent digraph
+        g: Latent subgraph structure
+        v: Target node
+        S: Set of identified nodes
+        Z: Z node set
+        H1: First latent node set
+        H2: Second latent node set
 
     Returns:
         Allowed nodes for Y
@@ -472,11 +471,11 @@ def _check_trek_system(
     Check if a trek system exists for given parameters.
 
     Args:
-        `g_orig`: Original latent digraph
-        `g`: Latent subgraph structure
-        `Z`: Z node set
-        `v`: Target node
-        `Ya`: Allowed Y nodes
+        g_orig: Original latent digraph
+        g: Latent subgraph structure
+        Z: Z node set
+        v: Target node
+        Ya: Allowed Y nodes
 
     Returns:
         Dictionary with 'objval' and optionally 'trekSystem' and 'Y'
@@ -584,8 +583,8 @@ def lsc_id(g: LatentDigraph, subset_size_control: int | None = None) -> LscIDRes
     digraph are generically identifiable.
 
     Args:
-        `g`: The latent digraph to analyze
-        `subset_size_control`: Maximum size of latent node subsets to consider
+        g: The latent digraph to analyze
+        subset_size_control: Maximum size of latent node subsets to consider
                               (default None, meaning no limit)
 
     Returns:

@@ -17,13 +17,13 @@ class GenericIDResult:
     Result from generic identification algorithms.
 
     Attributes:
-        `solved_parents`: List of solved parent nodes for each node
-        `unsolved_parents`: List of unsolved parent nodes for each node
-        `solved_siblings`: List of solved sibling nodes for each node
-        `unsolved_siblings`: List of unsolved sibling nodes for each node
-        `identifier`: Function that takes covariance matrix and returns identified parameters
-        `mixed_graph`: The input mixed graph
-        `tian_decompose`: Whether Tian decomposition was used
+        solved_parents: List of solved parent nodes for each node
+        unsolved_parents: List of unsolved parent nodes for each node
+        solved_siblings: List of solved sibling nodes for each node
+        unsolved_siblings: List of unsolved sibling nodes for each node
+        identifier: Function that takes covariance matrix and returns identified parameters
+        mixed_graph: The input mixed graph
+        tian_decompose: Whether Tian decomposition was used
     """
 
     solved_parents: list[list[int]]
@@ -110,11 +110,11 @@ class SEMIDResult:
     Complete SEMID result including global and generic identifiability.
 
     Attributes:
-        `is_global_id`: Whether the graph is globally identifiable (None if not tested)
-        `is_generic_non_id`: Whether generically non-identifiable (None if not tested)
-        `generic_id_result`: GenericIDResult from identification algorithms
-        `mixed_graph`: The input mixed graph
-        `tian_decompose`: Whether Tian decomposition was used
+        is_global_id: Whether the graph is globally identifiable (None if not tested)
+        is_generic_non_id: Whether generically non-identifiable (None if not tested)
+        generic_id_result: GenericIDResult from identification algorithms
+        mixed_graph: The input mixed graph
+        tian_decompose: Whether Tian decomposition was used
     """
 
     is_global_id: bool | None

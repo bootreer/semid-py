@@ -194,7 +194,6 @@ class MixedGraph:
         nodes: list[int],
         avoid_left_nodes: list[int] | None = None,
         avoid_right_nodes: list[int] | None = None,
-        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are trek-reachable from the given nodes.
@@ -204,10 +203,9 @@ class MixedGraph:
         but only returns observed nodes.
 
         Args:
-            `nodes`: Nodes to start from (external vertex IDs)
-            `avoid_left_nodes`: Nodes to avoid on the left (external vertex IDs)
-            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
-            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
+            nodes: Nodes to start from (external vertex IDs)
+            avoid_left_nodes: Nodes to avoid on the left (external vertex IDs)
+            avoid_right_nodes: Nodes to avoid on the right (external vertex IDs)
 
         Returns:
             List of trek-reachable node indices (external vertex IDs)
@@ -232,7 +230,6 @@ class MixedGraph:
             avoid_right_nodes=internal_avoid_right,
             include_observed=True,
             include_latents=False,
-            max_depth=max_depth,
         )
 
         # Convert results back to external IDs
@@ -243,7 +240,6 @@ class MixedGraph:
         nodes: list[int],
         avoid_left_nodes: list[int] | None = None,
         avoid_right_nodes: list[int] | None = None,
-        max_depth: int | None = None,
     ) -> list[int]:
         """
         Get all nodes that are half-trek-reachable from the given nodes.
@@ -252,10 +248,9 @@ class MixedGraph:
         nodes, then forwards. Equivalent to avoiding all non-starting nodes on the left.
 
         Args:
-            `nodes`: Nodes to start from (external vertex IDs)
-            `avoid_left_nodes`: Additional nodes to avoid on the left (external vertex IDs)
-            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
-            `max_depth`: Maximum trek depth (number of edges). None = unlimited.
+            nodes: Nodes to start from (external vertex IDs)
+            avoid_left_nodes: Additional nodes to avoid on the left (external vertex IDs)
+            avoid_right_nodes: Nodes to avoid on the right (external vertex IDs)
 
         Returns:
             List of half-trek-reachable node indices (external vertex IDs)
@@ -275,7 +270,6 @@ class MixedGraph:
             nodes=nodes,
             avoid_left_nodes=combined_avoid_left,
             avoid_right_nodes=avoid_right_nodes,
-            max_depth=max_depth,
         )
 
     def induced_subgraph(self, nodes: list[int]) -> MixedGraph:
@@ -302,7 +296,7 @@ class MixedGraph:
         Ancestors include the input nodes themselves.
 
         Args:
-            `nodes`: Single node or list of nodes (external vertex IDs)
+            nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
             Sorted list of all ancestor nodes including the input nodes (external IDs)
@@ -328,7 +322,7 @@ class MixedGraph:
         Get parents of node(s) (using external vertex IDs).
 
         Args:
-            `nodes`: Single node or list of nodes (external vertex IDs)
+            nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
             Sorted list of all parent nodes (external IDs)
@@ -351,7 +345,7 @@ class MixedGraph:
         Get children of node(s) (using external vertex IDs).
 
         Args:
-            `nodes`: Single node or list of nodes (external vertex IDs)
+            nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
             Sorted list of all child nodes (external IDs)
@@ -374,7 +368,7 @@ class MixedGraph:
         Get all siblings (nodes connected by bidirected edges).
 
         Args:
-            `nodes`: Single node or list of nodes (external vertex IDs)
+            nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
             Sorted list of sibling nodes (external IDs), not including input nodes
@@ -401,7 +395,7 @@ class MixedGraph:
         Descendants include the input nodes themselves.
 
         Args:
-            `nodes`: Single node or list of nodes (external vertex IDs)
+            nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
             Sorted list of all descendant nodes including the input nodes (external IDs)
@@ -438,12 +432,12 @@ class MixedGraph:
         A trek is a path that goes backwards along directed edges, then forwards.
 
         Args:
-            `from_nodes`: The start nodes (external vertex IDs)
-            `to_nodes`: The end nodes (external vertex IDs)
-            `avoid_left_nodes`: Nodes to avoid on the left (external vertex IDs)
-            `avoid_right_nodes`: Nodes to avoid on the right (external vertex IDs)
-            `avoid_left_edges`: Directed edges to avoid on left side (external IDs)
-            `avoid_right_edges`: Directed edges to avoid on right side (external IDs)
+            from_nodes: The start nodes (external vertex IDs)
+            to_nodes: The end nodes (external vertex IDs)
+            avoid_left_nodes: Nodes to avoid on the left (external vertex IDs)
+            avoid_right_nodes: Nodes to avoid on the right (external vertex IDs)
+            avoid_left_edges: Directed edges to avoid on left side (external IDs)
+            avoid_right_edges: Directed edges to avoid on right side (external IDs)
 
         Returns:
             TrekSystem (with external vertex IDs)
@@ -515,11 +509,11 @@ class MixedGraph:
         on the left (backward) side - only on the right (forward) side.
 
         Args:
-            `from_nodes`: The start nodes (external vertex IDs)
-            `to_nodes`: The end nodes (external vertex IDs)
-            `avoid_left_nodes`: Nodes to avoid on the left side (external IDs)
-            `avoid_right_nodes`: Nodes to avoid on the right side (external IDs)
-            `avoid_right_edges`: Directed edges to avoid on right side (external IDs)
+            from_nodes: The start nodes (external vertex IDs)
+            to_nodes: The end nodes (external vertex IDs)
+            avoid_left_nodes: Nodes to avoid on the left side (external IDs)
+            avoid_right_nodes: Nodes to avoid on the right side (external IDs)
+            avoid_right_edges: Directed edges to avoid on right side (external IDs)
 
         Returns:
             TrekSystem with system_exists and active_from fields (external IDs)
@@ -539,6 +533,86 @@ class MixedGraph:
             avoid_right_nodes=avoid_right_nodes,
             avoid_left_edges=avoid_left_edges,
             avoid_right_edges=avoid_right_edges,
+        )
+
+    def get_half_trek_system_local(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        max_hops: int,
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
+    ) -> TrekSystem:
+        """
+        Depth-limited half-trek system.
+
+        Like get_half_trek_system, but only considers half-treks of bounded length.
+        max_hops defines the number of edges in the original graph sense:
+        max_hops=1 means direct children/siblings only.
+
+        Args:
+            from_nodes: The start nodes (external vertex IDs)
+            to_nodes: The end nodes (external vertex IDs)
+            max_hops: Maximum number of hops in the original graph.
+                      1 = direct children/siblings, 2 = two edges, etc.
+            avoid_left_nodes: Nodes to avoid on the left side (external IDs)
+            avoid_right_nodes: Nodes to avoid on the right side (external IDs)
+            avoid_right_edges: Directed edges to avoid on right side (external IDs)
+
+        Returns:
+            TrekSystem with system_exists and active_from fields (external IDs)
+        """
+        # Get all directed edges to avoid on the left side (in external IDs)
+        avoid_left_edges = [
+            (self._vertex_nums[i], self._vertex_nums[j])
+            for i in range(self.num_nodes)
+            for j in range(self.num_nodes)
+            if self.d_adj[i, j] != 0
+        ]
+
+        # Convert all external IDs to internal indices
+        internal_from = self.to_internal(from_nodes)
+        internal_to = self.to_internal(to_nodes)
+        internal_avoid_left = (
+            self.to_internal(avoid_left_nodes) if avoid_left_nodes else []
+        )
+        internal_avoid_right = (
+            self.to_internal(avoid_right_nodes) if avoid_right_nodes else []
+        )
+        internal_avoid_left_edges = (
+            [
+                (self._vertex_to_idx[i], self._vertex_to_idx[j])
+                for i, j in avoid_left_edges
+            ]
+            if avoid_left_edges
+            else []
+        )
+        internal_avoid_right_edges = (
+            [
+                (self._vertex_to_idx[i], self._vertex_to_idx[j])
+                for i, j in avoid_right_edges
+            ]
+            if avoid_right_edges
+            else []
+        )
+
+        result = self.internal.get_trek_system_local(
+            internal_from,
+            internal_to,
+            max_hops=max_hops,
+            avoid_left_nodes=internal_avoid_left,
+            avoid_right_nodes=internal_avoid_right,
+            avoid_left_edges=internal_avoid_left_edges,
+            avoid_right_edges=internal_avoid_right_edges,
+        )
+
+        # Convert active_from back to external IDs
+        return TrekSystem(
+            system_exists=result.system_exists,
+            active_from=(
+                self.to_external(result.active_from) if result.system_exists else []
+            ),
         )
 
     #############################################
@@ -689,7 +763,7 @@ class MixedGraph:
         Get the strongly connected component containing a node.
 
         Args:
-            `node`: The node (external vertex ID)
+            node: The node (external vertex ID)
 
         Returns:
             List of nodes in the strongly connected component (external IDs)
@@ -778,7 +852,7 @@ class MixedGraph:
 
             # Incoming nodes: parents of internal nodes that are not themselves internal
             # Only include nodes that appear in global_top_order (maintains global order)
-            parents_of_internal = set()
+            parents_of_internal: set[int] = set()
             for node in internal:
                 node_internal_idx = self._vertex_to_idx[node]
                 parent_indices = np.flatnonzero(self.d_adj[:, node_internal_idx])
@@ -921,7 +995,7 @@ class MixedGraph:
         parents = [parent for n in reachable for parent in self.parents(n)]
         incoming = (set(parents) - reachable) & avoid_set
 
-        return BiNodesResult(parents, incoming)
+        return BiNodesResult(parents, list(incoming))
 
     def plot(self, **kwargs):
         """
