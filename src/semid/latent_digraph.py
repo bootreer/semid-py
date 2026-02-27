@@ -31,6 +31,7 @@ class LatentDigraph:
         adj: NDArray[np.int32] | list[int],
         num_observed: int | None = None,
         nodes: int | None = None,
+        validate: bool = True,
     ):
         """
         Create a LatentDigraph object.
@@ -40,8 +41,16 @@ class LatentDigraph:
             num_observed: Number of observed nodes. If None, all nodes are observed.
         """
         self.adj = utils.reshape_arr(adj, nodes)
-        utils.validate_matrix(self.adj)
-        self.digraph = ig.Graph.Adjacency(matrix=self.adj, mode="directed")
+
+        if validate:
+            utils.validate_matrix(self.adj)
+
+        rows, cols = np.nonzero(self.adj)
+        self.digraph = ig.Graph(
+            n=self.adj.shape[0],
+            edges=list(zip(rows.tolist(), cols.tolist())),
+            directed=True,
+        )
 
         if num_observed is None:
             num_observed = self.adj.shape[0]

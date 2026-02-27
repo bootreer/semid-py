@@ -38,13 +38,18 @@ def _():
                     d_adj[i, j] = 1
         return semid.MixedGraph(d_adj, b_adj)
 
-    return generate_random_mixed, mo, semid
+
+    def count_identified(result):
+        dir_id = sum(len(p) for p in result.solved_parents)
+        bi_id = sum(len(s) for s in result.solved_siblings) // 2
+        return dir_id + bi_id
+
+    return count_identified, generate_random_mixed, mo, semid
 
 
 @app.cell
 def _():
-    # running this takes around 10-20 minutes
-    graph_sizes = [8, 12, 25, 50, 75, 100]
+    graph_sizes = [8, 25, 50, 100, 150]
     ps = [0.1, 0.2, 0.3]
     qs = [0.2, 0.3, 0.4, 0.5, 0.6]
     depths = [1, 2, 3, 5, 10, None]  # None = unlimited
@@ -52,17 +57,21 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(depths, generate_random_mixed, graph_sizes, mo, ps, qs, semid):
+def _(
+    count_identified,
+    depths,
+    generate_random_mixed,
+    graph_sizes,
+    mo,
+    ps,
+    qs,
+    semid,
+):
     import itertools
     import time
     import pandas as pd
 
     N = 10  # graphs per combo
-
-    def count_identified(result):
-        dir_id = sum(len(p) for p in result.solved_parents)
-        bi_id = sum(len(s) for s in result.solved_siblings) // 2
-        return dir_id + bi_id
 
     combos = list(itertools.product(graph_sizes, ps, qs))
     records = []

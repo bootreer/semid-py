@@ -37,6 +37,7 @@ class MixedGraph:
         b_adj: NDArray[np.int32] | list[int],
         nodes: Optional[int] = None,
         vertex_nums: Optional[list[int]] = None,
+        validate: bool = True,
     ):
         """
         Create a mixed graph.
@@ -51,7 +52,9 @@ class MixedGraph:
         self._tian_node_map = None
         self.d_adj = utils.reshape_arr(d_adj, nodes)
         self.b_adj = utils.reshape_arr(b_adj, nodes)
-        utils.validate_matrices(self.d_adj, self.b_adj)
+
+        if validate:
+            utils.validate_matrices(self.d_adj, self.b_adj)
 
         if not (self.b_adj == self.b_adj.T).all():
             self.b_adj = ((self.b_adj + self.b_adj.T) > 0).astype(np.int32)
@@ -70,8 +73,15 @@ class MixedGraph:
         # Create fast lookup: external_id -> internal_index
         self._vertex_to_idx = {v: i for i, v in enumerate(self._vertex_nums)}
 
-        self.directed = ig.Graph.Adjacency(matrix=self.d_adj, mode="directed")
-        self.bidirected = ig.Graph.Adjacency(matrix=self.b_adj, mode="undirected")
+        rows, cols = np.nonzero(self.d_adj)
+        self.directed = ig.Graph(
+            n=n, edges=list(zip(rows.tolist(), cols.tolist())), directed=True
+        )
+
+        rows, cols = np.nonzero(np.triu(self.b_adj, k=1))
+        self.bidirected = ig.Graph(
+            n=n, edges=list(zip(rows.tolist(), cols.tolist())), directed=False
+        )
 
         # Create internal LatentDigraph representation
         # Each bidirected edge gets its own latent confounder
@@ -92,7 +102,9 @@ class MixedGraph:
             L_with_latents[latent_node, i] = 1
             L_with_latents[latent_node, j] = 1
 
-        self.internal = LatentDigraph(L_with_latents, num_observed=num_observed)
+        self.internal = LatentDigraph(
+            L_with_latents, num_observed=num_observed, validate=False
+        )
 
     @staticmethod
     def from_latent(lg: LatentDigraph) -> MixedGraph:

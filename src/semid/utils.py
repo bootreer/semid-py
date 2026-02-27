@@ -4,13 +4,13 @@ from numpy.typing import NDArray
 
 
 def validate_matrix(mat: NDArray[np.int32]):
-    if len(mat.shape) != 2 or mat.shape[0] != mat.shape[1]:
+    if mat.ndim != 2 or mat.shape[0] != mat.shape[1]:
         raise ValueError("Input matrix must be square")
 
-    if not np.isin(mat, [0, 1]).all():
+    if ((mat != 0) & (mat != 1)).any():
         raise ValueError("Input matrix must only contain 0's and 1's.")
 
-    if not (np.diag(mat) == 0).all():
+    if mat.diagonal().any():
         raise ValueError("Input matrix must have 0's along the diagonal.")
 
 
@@ -18,13 +18,13 @@ def validate_matrices(L: NDArray[np.int32], O: NDArray[np.int32]):  # noqa: E741
     if L.shape != O.shape:
         raise ValueError("L and O must have the same shape.")
 
-    if len(L.shape) != 2 or L.shape[0] != L.shape[1]:
+    if L.ndim != 2 or L.shape[0] != L.shape[1]:
         raise ValueError("L and O must both be square matrices.")
 
-    if not (np.isin(L, [0, 1]).all() and np.isin(O, [0, 1]).all()):
+    if ((L != 0) & (L != 1)).any() or ((O != 0) & (O != 1)).any():
         raise ValueError("L and O must only contain 1's and 0's.")
 
-    if not ((np.diag(L) == 0).all() and (np.diag(O) == 0).all()):
+    if L.diagonal().any() or O.diagonal().any():
         raise ValueError("L and O must have 0's along their diagonals.")
 
 

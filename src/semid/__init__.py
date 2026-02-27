@@ -32,6 +32,7 @@ from .identification import (
     trek_separation_identify_step,
     zuta,
 )
+from .identification.causal_effect import check_criterion, wholematrix_criterion
 from .latent_digraph import LatentDigraph
 from .mixed_graph import MixedGraph
 from .utils import (
@@ -80,4 +81,6 @@ __all__ = [
     "LocalBBResult",
     "MIDResult",
     "ExtMIDResult",
+    "check_criterion",
+    "wholematrix_criterion",
 ]

@@ -126,8 +126,8 @@ def _parents_of_nodes(
 
 def _flow_graph_matrix(
     adj: NDArray, latent_nodes: list[int], observed_nodes: list[int]
-) -> NDArray:
-    """Build the base flow graph adjacency matrix.
+) -> list[tuple[int, int]]:
+    """Build the base flow graph edge list.
 
     The flow graph has 2m + 2 nodes where m = adj.shape[0].
     Node indices: original 0..m-1, copies m..2m-1, s=2m, t=2m+1.
@@ -137,42 +137,40 @@ def _flow_graph_matrix(
     s, t = 2 * m, 2 * m + 1
 
     obs = np.array(observed_nodes)
-    flow[s, obs] = 1            # s -> observed
-    flow[m + obs, t] = 1        # copy of observed -> t
+    flow[s, obs] = 1  # s -> observed
+    flow[m + obs, t] = 1  # copy of observed -> t
 
     lat = np.array(latent_nodes)
-    flow[lat, m + lat] = 1      # latent -> copy of latent
+    flow[lat, m + lat] = 1  # latent -> copy of latent
 
-    return flow
+    rows, cols = np.nonzero(flow)
+    return list(zip(rows.tolist(), cols.tolist()))
 
 
 def _max_flow_st_graph(
-    flow_graph: NDArray,
+    flow_edges: list[tuple[int, int]],
     adj: NDArray,
     latent_nodes: list[int],
     W: list[int],
     U: list[int],
 ) -> int:
     """Compute max s-t flow using igraph."""
-    flow_adj = flow_graph.copy()
     m = adj.shape[0]
-
-    # For each latent node y: if y -> x exists, add edge x -> y (for W)
-    # and copy(y) -> copy(x) (for U) in the flow graph
+    extra = []
     for y in latent_nodes:
+        col = adj[y]
         for x in W:
-            if adj[y, x]:
-                flow_adj[x, y] = 1
+            if col[x]:
+                extra.append((x, y))
         for x in U:
-            if adj[y, x]:
-                flow_adj[m + y, m + x] = 1
-
-    g = ig.Graph.Adjacency(flow_adj.tolist(), mode="directed")
+            if col[x]:
+                extra.append((m + y, m + x))
+    g = ig.Graph(n=2 * m + 2, edges=flow_edges + extra, directed=True)
     return g.maxflow_value(2 * m, 2 * m + 1, capacity=None)
 
 
 def _matching_criterion(
-    flow_graph_adj: NDArray,
+    flow_edges: list[tuple[int, int]],
     adj: NDArray,
     v: int,
     W: list[int],
@@ -189,11 +187,14 @@ def _matching_criterion(
         return False
 
     # (iii) max flow for (W, U) equals |W|
-    if _max_flow_st_graph(flow_graph_adj, adj, latent_nodes, W, U) != len(W):
+    if _max_flow_st_graph(flow_edges, adj, latent_nodes, W, U) != len(W):
         return False
 
     # (iv) max flow for (W ∪ {v}, U ∪ {v}) < |W| + 1
-    if _max_flow_st_graph(flow_graph_adj, adj, latent_nodes, W + [v], U + [v]) == len(W) + 1:
+    if (
+        _max_flow_st_graph(flow_edges, adj, latent_nodes, W + [v], U + [v])
+        == len(W) + 1
+    ):
         return False
 
     return True
@@ -248,7 +249,9 @@ def _full_factor_criterion(
         while remaining_v:
             for v in list(remaining_v):
                 if any(
-                    all(p in set_of_l for p in _joint_parents(adj, [u, v], latent_nodes))
+                    all(
+                        p in set_of_l for p in _joint_parents(adj, [u, v], latent_nodes)
+                    )
                     for u in checked
                 ):
                     remaining_v.discard(v)
@@ -268,7 +271,9 @@ def _check_full_factor_zuta(
 
     # count children per latent node and sort by decreasing count
     num_children = [adj[parent, observed_nodes].sum() for parent in latent_nodes]
-    ordered_latent = sorted(latent_nodes, key=lambda n: num_children[latent_nodes.index(n)], reverse=True)
+    ordered_latent = sorted(
+        latent_nodes, key=lambda n: num_children[latent_nodes.index(n)], reverse=True
+    )
     sorted_counts = sorted(num_children, reverse=True)
 
     # check if node with most children has all children
@@ -285,7 +290,8 @@ def _check_full_factor_zuta(
 
         # observed children of node but not of next_node
         only_children = [
-            obs for obs in observed_nodes
+            obs
+            for obs in observed_nodes
             if adj[node, obs] == 1 and adj[next_node, obs] == 0
         ]
         if len(only_children) != 1:
@@ -293,7 +299,7 @@ def _check_full_factor_zuta(
 
         # check no other later latent node is also a parent of this child
         child = only_children[0]
-        if any(adj[other, child] == 1 for other in ordered_latent[i + 2:]):
+        if any(adj[other, child] == 1 for other in ordered_latent[i + 2 :]):
             return {"zuta": False}
 
     return {"zuta": True, "ordering": ordered_latent}
@@ -367,7 +373,7 @@ def zuta(lam: NDArray | LatentDigraph) -> ZUTAResult:
 
 
 def check_matching_criterion(
-    flow_graph_adj: NDArray,
+    flow_edges: list[tuple[int, int]],
     adj: NDArray,
     h: int,
     latent_nodes: list[int],
@@ -411,7 +417,9 @@ def check_matching_criterion(
                 continue
             obs_without_w = [o for o in obs_without_v if o not in W]
             possible_u = _children_of_nodes(
-                adj, _parents_of_nodes(adj, W, latent_nodes), obs_without_w,
+                adj,
+                _parents_of_nodes(adj, W, latent_nodes),
+                obs_without_w,
             )
             if len(possible_u) < len(W):
                 continue
@@ -419,7 +427,7 @@ def check_matching_criterion(
                 U = list(U_combo)
                 if not adj[h, U].any():
                     continue
-                if _matching_criterion(flow_graph_adj, adj, v, W, U, latent_nodes):
+                if _matching_criterion(flow_edges, adj, v, W, U, latent_nodes):
                     return MatchingResult(found=True, h=h, v=v, W=W, U=U)
 
     return MatchingResult(found=False, h=h)
@@ -443,12 +451,21 @@ def check_local_bb_criterion(
     -------
     LocalBBResult
     """
+    lat = np.array(latent_nodes)
+    lat_obs = adj[np.ix_(lat, np.array(observed_nodes))]
+    obs_to_col = {o: i for i, o in enumerate(observed_nodes)}
+
     for h in latent_nodes:
         children_h = _children_of_nodes(adj, h, observed_nodes)
         for U in _power_set(children_h, len(children_h)):
             if len(U) <= 2:
                 continue
-            jp_U = _joint_parents(adj, U, latent_nodes)
+            u_cols = [obs_to_col[u] for u in U]
+            jp_U = [
+                int(lat[i])
+                for i, s in enumerate(lat_obs[:, u_cols].sum(axis=1))
+                if s >= 2
+            ]
             p = len(U)
             m = len(jp_U)
             # cardinality inequality
@@ -493,14 +510,14 @@ def m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> MIDResult
     latent_nodes = [n for n in latent_nodes if n not in S]
     not_identified = list(latent_nodes)
 
-    flow_graph_adj = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
+    flow_edges = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
     tuple_list: list[dict] = []
 
     while latent_nodes:
         found = False
         for h in list(not_identified):
             result = check_matching_criterion(
-                flow_graph_adj, adj, h, latent_nodes, observed_nodes, max_card
+                flow_edges, adj, h, latent_nodes, observed_nodes, max_card
             )
             if result.found:
                 found = True
@@ -575,7 +592,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
 
     latent_nodes = [n for n in latent_nodes if n not in S]
     not_identified = list(latent_nodes)
-    flow_graph_adj = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
+    flow_edges = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
     tuple_list: list[dict] = []
 
     while latent_nodes:
@@ -608,7 +625,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
         found_any = False
         for h in list(not_identified):
             mc_result = check_matching_criterion(
-                flow_graph_adj, adj, h, latent_nodes, observed_nodes, max_card
+                flow_edges, adj, h, latent_nodes, observed_nodes, max_card
             )
             if mc_result.found:
                 found_any = True
@@ -628,9 +645,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
 
                 adj[h, :] = 0
                 col_sums = adj.sum(axis=0)
-                obs_without_parents = [
-                    o for o in observed_nodes if col_sums[o] == 0
-                ]
+                obs_without_parents = [o for o in observed_nodes if col_sums[o] == 0]
                 observed_nodes = [
                     o for o in observed_nodes if o not in obs_without_parents
                 ]
