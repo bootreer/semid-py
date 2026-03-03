@@ -1,6 +1,16 @@
+"""Shared utility types and helper functions."""
 from dataclasses import dataclass
+from itertools import combinations
+from typing import Iterator
+
 import numpy as np
 from numpy.typing import NDArray
+
+
+def subsets_of_size(items: list, size: int) -> Iterator[list]:
+    """Generate all subsets of a given size."""
+    for subset in combinations(items, size):
+        yield list(subset)
 
 
 def validate_matrix(mat: NDArray[np.int32]):

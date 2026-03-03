@@ -1,3 +1,4 @@
+"""Latent-factor half-trek criterion (LF-HTC) identification."""
 from itertools import combinations
 from typing import Callable
 
@@ -5,14 +6,9 @@ import numpy as np
 from numpy.typing import NDArray
 
 from semid.latent_digraph import LatentDigraph
+from semid.utils import subsets_of_size
 
 from .types import IdentifierResult, LfhtcIdentifyStepResult, LfhtcIDResult
-
-
-def subsets_of_size(items: list, size: int):
-    """Generate all subsets of a given size."""
-    for subset in combinations(items, size):
-        yield list(subset)
 
 
 def validate_latent_nodes_are_sources(graph: LatentDigraph) -> None:

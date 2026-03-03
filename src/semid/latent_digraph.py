@@ -1,3 +1,4 @@
+"""LatentDigraph: causal models with explicit latent variable nodes."""
 from __future__ import annotations
 
 from typing import Literal

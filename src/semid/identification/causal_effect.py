@@ -108,8 +108,8 @@ def _maxflow_q(g: MixedGraph, v: int, q: set[int]) -> int:
 
     Args:
         g: The mixed graph.
-        v: Target node.
-        q: Set of nodes whose edges into v are kept.
+        v: Target node (external vertex ID).
+        q: Set of nodes whose edges into v are kept (external vertex IDs).
 
     Returns:
         Max-flow value.
@@ -120,8 +120,15 @@ def _maxflow_q(g: MixedGraph, v: int, q: set[int]) -> int:
     rv = _removable_ancestors(g, v)
     ancestors = [u for u in g.ancestors(v) if u != v]
 
+    # Convert all external vertex IDs to internal 0-based indices before
+    # passing to _build_flow_graph, which works on d_adj indices directly.
+    v_int = g.to_internal(v)
+    ancestors_int = g.to_internal(ancestors)
+    rv_int = g.to_internal(rv)
+    q_int = set(g.to_internal(list(q)))
+
     flow_graph, source, sink = _build_flow_graph(
-        np.array(g.d_adj, dtype=int), ancestors, rv, v, q, g.num_nodes
+        np.array(g.d_adj, dtype=int), ancestors_int, rv_int, v_int, q_int, g.num_nodes
     )
     return int(
         flow_graph.maxflow(source, sink, capacity=flow_graph.es["capacity"]).value
@@ -164,4 +171,4 @@ def wholematrix_criterion(g: MixedGraph) -> bool:
     Returns:
         True if all causal effects in the model are identifiable.
     """
-    return all(check_criterion(g, v, set(g.parents(v))) for v in range(g.num_nodes))
+    return all(check_criterion(g, v, set(g.parents(v))) for v in g.nodes)

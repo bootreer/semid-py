@@ -1,3 +1,5 @@
+"""MixedGraph: directed and bidirected edges for observed-variable SEMs."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -199,7 +201,19 @@ class MixedGraph:
         return self._vertex_nums.copy()
 
     def is_sibling(self, a: int, b: int) -> bool:
-        return self.b_adj[a, b] != 0
+        """
+        Check if two nodes are siblings (connected by a bidirected edge).
+
+        Args:
+            a: First node (external vertex ID)
+            b: Second node (external vertex ID)
+
+        Returns:
+            True if a and b are connected by a bidirected edge
+        """
+        ia = self._vertex_to_idx[a]
+        ib = self._vertex_to_idx[b]
+        return bool(self.b_adj[ia, ib] != 0)
 
     def tr_from(
         self,
@@ -702,7 +716,7 @@ class MixedGraph:
             return None
 
         num_unsolved = np.sum(solved == 0)
-        return list(np.argsort(solved)[num_unsolved:])
+        return [self._vertex_nums[i] for i in np.argsort(solved)[num_unsolved:]]
 
     def non_htc_id(self) -> bool:
         """
@@ -983,29 +997,47 @@ class MixedGraph:
         return True
 
     def get_mixed_comp(self, sub_nodes: list[int], node: int) -> BiNodesResult:
+        """
+        Get the bidirected-connected component containing node, avoiding sub_nodes.
+
+        Args:
+            sub_nodes: Nodes to treat as a boundary (external vertex IDs)
+            node: The starting node (external vertex ID)
+
+        Returns:
+            BiNodesResult with parents and incoming nodes (external vertex IDs)
+        """
         if node in sub_nodes:
             raise ValueError(
                 f"Node {node} cannot be in sub_nodes for mixed component computation"
             )
 
-        reachable = {node}
-        avoid_set = set(sub_nodes)
+        # BFS in internal index space (igraph.neighbors returns internal indices)
+        avoid_set_internal = set(self._vertex_to_idx[n] for n in sub_nodes)
+        start_internal = self._vertex_to_idx[node]
 
-        queue = deque([node])
-        visited = {node}
+        reachable_internal = {start_internal}
+        queue = deque([start_internal])
+        visited_internal = {start_internal}
 
         while queue:
             current = queue.popleft()
 
             neighbors = self.bidirected.neighbors(current, mode="out")
             for neighbor in neighbors:
-                if neighbor not in visited and neighbor not in avoid_set:
-                    visited.add(neighbor)
-                    reachable.add(neighbor)
+                if (
+                    neighbor not in visited_internal
+                    and neighbor not in avoid_set_internal
+                ):
+                    visited_internal.add(neighbor)
+                    reachable_internal.add(neighbor)
                     queue.append(neighbor)
 
+        # Convert reachable internal indices back to external IDs
+        reachable = {self._vertex_nums[i] for i in reachable_internal}
+
         parents = [parent for n in reachable for parent in self.parents(n)]
-        incoming = (set(parents) - reachable) & avoid_set
+        incoming = (set(parents) - reachable) & set(sub_nodes)
 
         return BiNodesResult(parents, list(incoming))
 

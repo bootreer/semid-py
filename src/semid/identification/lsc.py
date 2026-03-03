@@ -3,11 +3,10 @@
 import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import linprog
 
 from semid.latent_digraph import LatentDigraph
+from semid.utils import subsets_of_size
 
-from .lfhtc import subsets_of_size
 from .types import LscIDResult
 
 # Numerical tolerances matching R implementation's exact equality philosophy
@@ -239,6 +238,8 @@ def joint_flow(
         }
 
     # Solve LP
+    from scipy.optimize import linprog
+
     result = linprog(
         c,
         A_ub=A_ub,

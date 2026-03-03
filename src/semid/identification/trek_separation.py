@@ -8,7 +8,11 @@ from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
 
-from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
+from .types import (
+    GenericIDResult,
+    IdentifierResult,
+    IdentifyStepResult,
+)
 from .core import general_generic_id
 
 
@@ -146,7 +150,10 @@ def trek_separation_identify_step(
     """
     if max_subset_size <= 0:
         raise ValueError("max_subset_size must be >= 1")
-
+    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
+        "trek_separation_identify_step expects a graph with default 0-based vertex_nums. "
+        "Use general_generic_id() or trek_sep_id() instead."
+    )
     m = mixed_graph.num_nodes
     identified_edges = []
     all_nodes = list(range(m))
@@ -201,9 +208,14 @@ def trek_sep_id(
     max_subset_size: int = 3,
     tian_decompose: bool = True,
 ) -> GenericIDResult:
-    def ts_step(graph, unsolved, solved, identifier):
+    def ts_step(
+        mixed_graph: MixedGraph,
+        unsolved_parents: list[list[int]],
+        solved_parents: list[list[int]],
+        identifier: Callable[[NDArray], IdentifierResult],
+    ) -> IdentifyStepResult:
         return trek_separation_identify_step(
-            graph, unsolved, solved, identifier, max_subset_size
+            mixed_graph, unsolved_parents, solved_parents, identifier, max_subset_size
         )
 
     return general_generic_id(mixed_graph, [ts_step], tian_decompose)

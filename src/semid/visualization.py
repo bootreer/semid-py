@@ -1,16 +1,16 @@
 """Graph visualization using matplotlib and igraph layouts."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Literal
 
-import igraph as ig
-import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from matplotlib.patches import FancyArrowPatch
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
+    import igraph as ig
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
     from .latent_digraph import LatentDigraph
     from .mixed_graph import MixedGraph
 
@@ -81,6 +81,8 @@ def _draw_directed_edges(
     # matplotlib scatter size is in points^2, so we take sqrt to get radius
     node_radius = np.sqrt(node_size) / 2
 
+    from matplotlib.patches import FancyArrowPatch
+
     for i in range(n):
         for j in range(n):
             if adj_matrix[i, j] == 1:
@@ -122,6 +124,8 @@ def _draw_bidirected_edges(
         node_size: Size of nodes for arrow shrinking (default 500)
     """
     n = len(positions)
+    from matplotlib.patches import FancyArrowPatch
+
     drawn = set()
     # Calculate shrink amount based on node size
     node_radius = np.sqrt(node_size) / 2
@@ -241,6 +245,8 @@ def plot_mixed_graph(
 
         >>> graph.plot()
     """
+    import matplotlib.pyplot as plt
+
     # Create figure if needed
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -340,6 +346,8 @@ def plot_latent_digraph(
 
         >>> graph.plot()
     """
+    import matplotlib.pyplot as plt
+
     # Create figure if needed
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -365,6 +373,8 @@ def plot_latent_digraph(
             positions[observed_nodes] = obs_positions
         else:
             positions = np.zeros((graph.num_nodes, 2))
+
+    from matplotlib.patches import FancyArrowPatch
 
     # Draw edges with different colors based on source node type
     n = graph.num_nodes

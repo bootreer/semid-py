@@ -1,8 +1,9 @@
 """Data types for identification results."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Protocol
 
 import numpy as np
 from numpy.typing import NDArray
@@ -55,18 +56,21 @@ class GenericIDResult:
             "",
         ]
 
+        nodes = self.mixed_graph.nodes
         dir_edges: list[str] = []
         if num_solved_dir > 0:
             lines.append("Identified directed edges:")
             count = 0
-            for i in range(n):
-                for parent in self.solved_parents[i]:
+            for idx, child in enumerate(nodes):
+                for parent in self.solved_parents[idx]:
                     if count < 10:
-                        dir_edges.append(f"{parent} -> {i}")
+                        dir_edges.append(f"{parent} -> {child}")
                         count += 1
                     else:
                         dir_edges.append("...")
                         break
+                if count >= 10:
+                    break
         else:
             dir_edges.append("None")
 
@@ -82,14 +86,16 @@ class GenericIDResult:
         if num_solved_bi > 0:
             lines.append("Identified bidir. edges:")
             count = 0
-            for i in range(n):
-                for sibling in filter(lambda j: i < j, self.solved_siblings[i]):
+            for idx, node in enumerate(nodes):
+                for sibling in filter(lambda j: node < j, self.solved_siblings[idx]):
                     if count < 10:
-                        bidir.append(f"{i} <-> {sibling}")
+                        bidir.append(f"{node} <-> {sibling}")
                         count += 1
                     else:
                         bidir.append("...")
                         break
+                if count >= 10:
+                    break
         else:
             bidir.append("None")
 
@@ -162,6 +168,22 @@ class IdentifierResult:
     Lambda: NDArray[np.float64]
     Omega: NDArray[np.float64]
 
+    def __str__(self) -> str:
+        """Pretty print the result."""
+        n = self.Lambda.shape[0]
+        lines = [
+            "Identifier Result",
+            "=" * 40,
+            f"Nodes: {n}",
+            "",
+            "Lambda (directed edge coefficients):",
+            str(self.Lambda),
+            "",
+            "Omega (error covariances):",
+            str(self.Omega),
+        ]
+        return "\n".join(lines)
+
 
 @dataclass(slots=True)
 class IdentifyStepResult:
@@ -179,6 +201,26 @@ class IdentifyStepResult:
     unsolved_parents: list[list[int]]
     solved_parents: list[list[int]]
     identifier: Callable[[NDArray], IdentifierResult]
+
+
+class IdentifyStepFunction(Protocol):
+    """Protocol for step functions used by general_generic_id.
+
+    Each step function takes the current graph and identification state,
+    attempts to identify additional edges in one pass, and returns the
+    updated state along with a new identifier closure.
+
+    Algorithm-specific parameters (e.g. ``max_hops`` in HTC) should be
+    bound via a wrapper closure before passing to general_generic_id.
+    """
+
+    def __call__(
+        self,
+        mixed_graph: MixedGraph,
+        unsolved_parents: list[list[int]],
+        solved_parents: list[list[int]],
+        identifier: Callable[[NDArray], IdentifierResult],
+    ) -> IdentifyStepResult: ...
 
 
 @dataclass(slots=True)
@@ -229,10 +271,10 @@ class LfhtcIDResult:
         if num_identified > 0:
             lines.append("Identified edges:")
             count = 0
-            for i in range(n_observed):
-                for parent in self.solved_parents[i]:
+            for local_i, node_id in enumerate(observed_nodes):
+                for parent in self.solved_parents[local_i]:
                     if count < 10:
-                        lines.append(f"  {parent} -> {i}")
+                        lines.append(f"  {parent} -> {node_id}")
                         count += 1
                     else:
                         lines.append("  ...")
@@ -267,6 +309,16 @@ class LscIDResult:
     H2s: list[list[int]]
     trek_systems: list[list]
     identified: bool
+
+    def __str__(self) -> str:
+        """Pretty print the result."""
+        lines = [
+            "LSC Identification Result",
+            "=" * 40,
+            f"Identified: {self.identified}",
+            f"Identified nodes ({len(self.S)}): {self.S}",
+        ]
+        return "\n".join(lines)
 
 
 @dataclass(slots=True)

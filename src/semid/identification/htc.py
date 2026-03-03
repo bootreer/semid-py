@@ -7,7 +7,11 @@ from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
 
-from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
+from .types import (
+    GenericIDResult,
+    IdentifierResult,
+    IdentifyStepResult,
+)
 
 
 def create_htc_identifier(
@@ -90,6 +94,10 @@ def htc_identify_step(
         IdentifyStepResult with identified_edges, unsolved_parents,
         solved_parents, and identifier
     """
+    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
+        "htc_identify_step expects a graph with default 0-based vertex_nums. "
+        "Use general_generic_id() or htc_id() instead."
+    )
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))
 
@@ -178,7 +186,14 @@ def htc_id(
     """
     from .core import general_generic_id
 
-    def htc_step_wrapper(graph, unsolved, solved, ident):
-        return htc_identify_step(graph, unsolved, solved, ident, max_hops)
+    def htc_step_wrapper(
+        mixed_graph: MixedGraph,
+        unsolved_parents: list[list[int]],
+        solved_parents: list[list[int]],
+        identifier: Callable[[NDArray], IdentifierResult],
+    ) -> IdentifyStepResult:
+        return htc_identify_step(
+            mixed_graph, unsolved_parents, solved_parents, identifier, max_hops
+        )
 
     return general_generic_id(mixed_graph, [htc_step_wrapper], tian_decompose)

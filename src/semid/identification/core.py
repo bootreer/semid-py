@@ -1,7 +1,5 @@
 """Core identification algorithms."""
 
-from typing import Callable
-
 import numpy as np
 
 from semid.mixed_graph import MixedGraph
@@ -11,13 +9,13 @@ from .base import (
     create_simple_bidir_identifier,
     tian_identifier,
 )
-from .types import GenericIDResult, SEMIDResult
+from .types import GenericIDResult, IdentifyStepFunction, SEMIDResult
 from .htc import htc_identify_step
 
 
 def general_generic_id(
     mixed_graph: MixedGraph,
-    id_step_functions: list[Callable],
+    id_step_functions: list[IdentifyStepFunction],
     tian_decompose: bool = True,
 ) -> GenericIDResult:
     """
@@ -28,7 +26,9 @@ def general_generic_id(
 
     Args:
         mixed_graph: The mixed graph to identify
-        id_step_functions: List of identification step functions to apply
+        id_step_functions: List of identification step functions to apply.
+                            Each must conform to the IdentifyStepFunction protocol.
+                            Use wrapper closures to bind algorithm-specific parameters.
         tian_decompose: Whether to use Tian decomposition (default: True).
                         In general, enabling this will make the algorithm
                         faster and more powerful
@@ -37,6 +37,15 @@ def general_generic_id(
         GenericIDResult with solved/unsolved edges and identifier function
     """
     m = mixed_graph.num_nodes
+    original_graph = mixed_graph
+
+    # Identification internals index directly into Lambda/Omega/Sigma matrices and use
+    # node IDs as positional indices into solved_parents/unsolved_parents lists, so the
+    # graph must have default 0-based vertex_nums throughout. Normalize if necessary
+    # (preserves edges, drops external IDs).
+    normalized = mixed_graph.nodes != list(range(m))
+    if normalized:
+        mixed_graph = MixedGraph(mixed_graph.d_adj, mixed_graph.b_adj)
 
     if not tian_decompose:
         unsolved_parents = [
@@ -126,13 +135,19 @@ def general_generic_id(
             for i in range(m)
         ]
 
+    if normalized:
+        solved_parents = [original_graph.to_external(p) for p in solved_parents]
+        unsolved_parents = [original_graph.to_external(p) for p in unsolved_parents]
+        solved_siblings = [original_graph.to_external(s) for s in solved_siblings]
+        unsolved_siblings = [original_graph.to_external(s) for s in unsolved_siblings]
+
     return GenericIDResult(
         solved_parents,
         unsolved_parents,
         solved_siblings,
         unsolved_siblings,
         identifier,
-        mixed_graph,
+        original_graph,
         tian_decompose,
     )
 
@@ -144,7 +159,7 @@ def semid(
     mixed_graph: MixedGraph,
     test_global_id: bool = True,
     test_generic_non_id: bool = True,
-    id_step_functions: list[Callable] | None = None,
+    id_step_functions: list[IdentifyStepFunction] | None = None,
     tian_decompose: bool = True,
 ) -> SEMIDResult:
     """

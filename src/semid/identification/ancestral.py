@@ -9,7 +9,11 @@ from semid.mixed_graph import MixedGraph
 from semid.utils import CComponent
 
 from .base import tian_sigma_for_component
-from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
+from .types import (
+    GenericIDResult,
+    IdentifierResult,
+    IdentifyStepResult,
+)
 from .core import general_generic_id
 
 
@@ -136,6 +140,10 @@ def ancestral_identify_step(
         IdentifyStepResult with identified_edges, unsolved_parents,
         solved_parents, and identifier
     """
+    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
+        "ancestral_identify_step expects a graph with default 0-based vertex_nums. "
+        "Use general_generic_id() or ancestral_id() instead."
+    )
     identified_edges = []
     all_nodes = mixed_graph.nodes
 
@@ -250,6 +258,7 @@ def ancestral_identify_step(
             allowed_nodes_larger = sorted(allowed_nodes & set(tian_graph.nodes))
 
             if len(allowed_nodes_larger) >= len(node_parents):
+                # TODO: max_hops
                 half_trek_result = tian_graph.get_half_trek_system(
                     from_nodes=allowed_nodes_larger, to_nodes=node_parents
                 )

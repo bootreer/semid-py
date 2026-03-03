@@ -8,7 +8,11 @@ from numpy.typing import NDArray
 
 from semid.mixed_graph import MixedGraph
 
-from .types import GenericIDResult, IdentifierResult, IdentifyStepResult
+from .types import (
+    GenericIDResult,
+    IdentifierResult,
+    IdentifyStepResult,
+)
 
 from .htc import htc_identify_step
 from .core import general_generic_id
@@ -81,7 +85,6 @@ def create_edgewise_identifier(
 
 def _find_edgewise_subset(
     mixed_graph: MixedGraph,
-    node: int,
     unsolved: list[int],
     allowed_nodes: list[int],
     htr_from_allowed_or_tr_from_unsolved: list[set[int]],
@@ -94,16 +97,14 @@ def _find_edgewise_subset(
         Tuple of (subset, active_from) if found, None otherwise
     """
     n_unsolved = len(unsolved)
-    # Search both small subsets (1 to subset_size_control) and large subsets
-    small_sizes = list(range(1, min(subset_size_control, n_unsolved) + 1))
+    # Match R ordering: large subsets descending first, then small subsets ascending.
+    # Dedup: sizes already covered by large_sizes are not repeated in small_sizes.
     large_sizes = list(
-        range(
-            n_unsolved,
-            max(n_unsolved - subset_size_control + 1, 1) - 1,
-            -1,
-        )
+        range(n_unsolved, max(n_unsolved - subset_size_control + 1, 1) - 1, -1)
     )
-    subset_sizes = sorted(set(small_sizes + large_sizes))
+    small_sizes = list(range(1, min(subset_size_control, n_unsolved) + 1))
+    seen = set(large_sizes)
+    subset_sizes = large_sizes + [s for s in small_sizes if s not in seen]
 
     for k in subset_sizes:
         subsets = combinations(unsolved, k)
@@ -160,7 +161,10 @@ def edgewise_identify_step(
     """
     if subset_size_control <= 0:
         raise ValueError("Invalid subset size control parameter.")
-
+    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
+        "edgewise_identify_step expects a graph with default 0-based vertex_nums. "
+        "Use general_generic_id() or edgewise_id() instead."
+    )
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))
 
@@ -203,7 +207,6 @@ def edgewise_identify_step(
 
         result = _find_edgewise_subset(
             mixed_graph,
-            i,
             unsolved,
             allowed_nodes,
             htr_from_allowed_or_tr_from_unsolved,
@@ -304,14 +307,28 @@ def edgewise_ts_id(
         GenericIDResult with identified edges and identifier function
     """
 
-    def eid_step(graph, unsolved, solved, identifier):
+    def eid_step(
+        mixed_graph: MixedGraph,
+        unsolved_parents: list[list[int]],
+        solved_parents: list[list[int]],
+        identifier: Callable[[NDArray], IdentifierResult],
+    ) -> IdentifyStepResult:
         return edgewise_identify_step(
-            graph, unsolved, solved, identifier, subset_size_control
+            mixed_graph,
+            unsolved_parents,
+            solved_parents,
+            identifier,
+            subset_size_control,
         )
 
-    def ts_step(graph, unsolved, solved, identifier):
+    def ts_step(
+        mixed_graph: MixedGraph,
+        unsolved_parents: list[list[int]],
+        solved_parents: list[list[int]],
+        identifier: Callable[[NDArray], IdentifierResult],
+    ) -> IdentifyStepResult:
         return trek_separation_identify_step(
-            graph, unsolved, solved, identifier, max_subset_size
+            mixed_graph, unsolved_parents, solved_parents, identifier, max_subset_size
         )
 
     return general_generic_id(
