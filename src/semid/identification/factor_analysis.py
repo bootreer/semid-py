@@ -60,6 +60,20 @@ class MIDResult:
     latent_nodes: list[int] = field(default_factory=list)
     observed_nodes: list[int] = field(default_factory=list)
 
+    def __str__(self) -> str:
+        lines = [
+            "M-Identifiability Result",
+            "=" * 40,
+            f"Identifiable: {self.identifiable}",
+            f"Latent nodes ({len(self.latent_nodes)}): {self.latent_nodes}",
+            f"Observed nodes ({len(self.observed_nodes)}): {self.observed_nodes}",
+            f"Steps: {len(self.tuple_list)}",
+        ]
+        for i, t in enumerate(self.tuple_list):
+            new_nodes = t.get("new_nodes_in_S", [t.get("h")])
+            lines.append(f"  Step {i + 1} [{t['criterion']}]: identified {new_nodes}")
+        return "\n".join(lines)
+
 
 @dataclass
 class ExtMIDResult:
@@ -69,6 +83,23 @@ class ExtMIDResult:
     tuple_list: list[dict] = field(default_factory=list)
     latent_nodes: list[int] = field(default_factory=list)
     observed_nodes: list[int] = field(default_factory=list)
+
+    def __str__(self) -> str:
+        lines = [
+            "Ext-M-Identifiability Result",
+            "=" * 40,
+            f"Identifiable: {self.identifiable}",
+            f"Latent nodes ({len(self.latent_nodes)}): {self.latent_nodes}",
+            f"Observed nodes ({len(self.observed_nodes)}): {self.observed_nodes}",
+            f"Steps: {len(self.tuple_list)}",
+        ]
+        for i, t in enumerate(self.tuple_list):
+            if t["criterion"] == "localBB":
+                new_nodes = t.get("new_nodes_in_S", [])
+                lines.append(f"  Step {i + 1} [localBB]: identified {new_nodes}, U={t.get('U')}")
+            else:
+                lines.append(f"  Step {i + 1} [matching]: identified h={t.get('h')}, v={t.get('v')}, W={t.get('W')}")
+        return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
