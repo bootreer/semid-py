@@ -41,6 +41,12 @@
         sourcePreference = "wheel";
       };
 
+      buildSystemOverlay = final: prev: {
+        rpy2-rinterface = prev.rpy2-rinterface.overrideAttrs (old: {
+          nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ final.setuptools ];
+        });
+      };
+
       editableOverlay = workspace.mkEditablePyprojectOverlay {
         root = "$REPO_ROOT";
       };
@@ -58,6 +64,7 @@
             lib.composeManyExtensions [
               pyproject-build-systems.overlays.wheel
               overlay
+              buildSystemOverlay
             ]
           )
       );
@@ -70,6 +77,22 @@
           pkgs = nixpkgs.legacyPackages.${system};
           pythonSet = pythonSets.${system}.overrideScope editableOverlay;
           virtualenv = pythonSet.mkVirtualEnv "semid" workspace.deps.all;
+          semid_r = pkgs.rPackages.buildRPackage {
+            name = "SEMID";
+            src = pkgs.fetchFromGitHub {
+              owner = "Lucaweihs";
+              repo = "SEMID";
+              rev = "e793bb261db3242102ba502b51bcdbfdd9537716";
+              sha256 = "sha256-Urgk64eTGNv0wosw2N9/gv0jzNh4mhxwD/cWd978emM=";
+            };
+            propagatedBuildInputs = with pkgs.rPackages; [
+              igraph
+              rje
+              R_methodsS3
+              R_oo
+              R_utils
+            ];
+          };
         in
         {
           default = pkgs.mkShell {
@@ -82,7 +105,9 @@
                   pyrefly
                 ]
               ))
-              ty
+              R
+              radian
+              semid_r
               uv
               virtualenv
             ];
@@ -101,6 +126,7 @@
 
       packages = forAllSystems (system: {
         default = pythonSets.${system}.mkVirtualEnv "semid" workspace.deps.default;
+        semid = pythonSets.${system}.semid;
       });
     };
 }
