@@ -15,7 +15,7 @@ from .types import (
 )
 
 from .htc import htc_identify_step
-from .core import general_generic_id
+from .algorithm import general_generic_id
 from .trek_separation import trek_separation_identify_step
 
 

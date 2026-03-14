@@ -548,7 +548,7 @@ def test_tian_decomposition_covariance_recovery():
     Ported from R test_tianDecompose.R: tests that the Tian decomposition
     correctly transforms the covariance matrix for each c-component.
     """
-    from semid.identification.base import tian_sigma_for_component
+    from semid.identification.identifiers import tian_sigma_for_component
 
     from tests.conftest import random_directed_acyclic, random_undirected
 

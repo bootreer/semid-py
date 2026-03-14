@@ -184,7 +184,7 @@ def htc_id(
     Returns:
         GenericIDResult with solved/unsolved edges and identifier function
     """
-    from .core import general_generic_id
+    from .algorithm import general_generic_id
 
     def htc_step_wrapper(
         mixed_graph: MixedGraph,

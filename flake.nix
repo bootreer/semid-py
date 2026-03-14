@@ -98,18 +98,16 @@
           default = pkgs.mkShell {
             packages = with pkgs; [
               pyright
+              pyrefly
               ruff
-              nil
-              (python3.withPackages (
-                ps: with ps; [
-                  pyrefly
-                ]
-              ))
+              uv
+              virtualenv
+
               R
               radian
               semid_r
-              uv
-              virtualenv
+
+              nil
             ];
             env = {
               UV_NO_SYNC = "1";
@@ -119,6 +117,8 @@
             shellHook = ''
               unset PYTHONPATH
               export REPO_ROOT=$(git rev-parse --show-toplevel)
+              [[ -d $REPO_ROOT/.venv && ! -L $REPO_ROOT/.venv ]] && rm -rf $REPO_ROOT/.venv
+              ln -sfT ${virtualenv} $REPO_ROOT/.venv
             '';
           };
         }

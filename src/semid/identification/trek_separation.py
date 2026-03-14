@@ -13,7 +13,7 @@ from .types import (
     IdentifierResult,
     IdentifyStepResult,
 )
-from .core import general_generic_id
+from .algorithm import general_generic_id
 
 
 def create_trek_separation_identifier(

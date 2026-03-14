@@ -8,13 +8,13 @@ from numpy.typing import NDArray
 from semid.mixed_graph import MixedGraph
 from semid.utils import CComponent
 
-from .base import tian_sigma_for_component
+from .identifiers import tian_sigma_for_component
 from .types import (
     GenericIDResult,
     IdentifierResult,
     IdentifyStepResult,
 )
-from .core import general_generic_id
+from .algorithm import general_generic_id
 
 
 def create_ancestral_identifier(

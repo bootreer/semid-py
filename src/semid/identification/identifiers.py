@@ -90,7 +90,7 @@ def create_identifier_base_case(
     validate_matrices(L, O)
     n = L.shape[0]
 
-    def identifier(Sigma: NDArray) -> IdentifierResult:
+    def identifier(_: NDArray) -> IdentifierResult:
         Lambda = np.full((n, n), np.nan)
         Lambda[L == 0] = 0
 

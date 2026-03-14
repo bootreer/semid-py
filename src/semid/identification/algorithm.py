@@ -4,7 +4,7 @@ import numpy as np
 
 from semid.mixed_graph import MixedGraph
 
-from .base import (
+from .identifiers import (
     create_identifier_base_case,
     create_simple_bidir_identifier,
     tian_identifier,

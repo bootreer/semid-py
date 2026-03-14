@@ -3,7 +3,7 @@ import pytest
 
 from semid import MixedGraph
 from semid.identification.ancestral import ancestral_identify_step
-from semid.identification.core import general_generic_id
+from semid.identification.algorithm import general_generic_id
 from semid.identification.edgewise import edgewise_id, edgewise_identify_step
 from semid.identification.htc import htc_id, htc_identify_step
 from semid.identification.trek_separation import trek_separation_identify_step
