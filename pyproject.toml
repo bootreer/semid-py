@@ -31,6 +31,7 @@ dev = [
     "pandas>=3.0.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
+    "pytest-xdist>=3.6.0",
     "tqdm>=4.67.3",
 ]
 r-comparison = [
@@ -44,4 +45,4 @@ python_functions = ["test_*"]
 markers = [
     "r_comparison: tests that compare Python implementation against R (requires R and rpy2)",
 ]
-addopts = "-m 'not r_comparison'"
+addopts = "-m 'not r_comparison' -n auto"

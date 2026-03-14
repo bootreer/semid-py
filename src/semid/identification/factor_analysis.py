@@ -15,9 +15,10 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from math import comb
 
-import igraph as ig
 import numpy as np
 from numpy.typing import NDArray
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import maximum_flow as _sp_maxflow
 
 from semid.latent_digraph import LatentDigraph
 
@@ -136,7 +137,11 @@ def _joint_parents(
     adj: NDArray, nodes: list[int], latent_nodes: list[int]
 ) -> list[int]:
     """Latent nodes that are parents of at least 2 nodes in `nodes`."""
-    return [p for p in latent_nodes if adj[p, nodes].sum() >= 2]
+    if not latent_nodes or not nodes:
+        return []
+    lat = np.asarray(latent_nodes)
+    n = np.asarray(nodes)
+    return lat[adj[np.ix_(lat, n)].sum(axis=1) >= 2].tolist()
 
 
 def _children_of_nodes(
@@ -145,63 +150,74 @@ def _children_of_nodes(
     """Children of `nodes` that are in `possible_children`."""
     if isinstance(nodes, int):
         nodes = [nodes]
-    return [c for c in possible_children if adj[nodes, c].any()]
+    if not nodes or not possible_children:
+        return []
+    n = np.asarray(nodes)
+    poss = np.asarray(possible_children)
+    return poss[adj[np.ix_(n, poss)].any(axis=0)].tolist()
 
 
 def _parents_of_nodes(
     adj: NDArray, nodes: list[int], possible_parents: list[int]
 ) -> list[int]:
     """Parents of `nodes` that are in `possible_parents`."""
-    return [p for p in possible_parents if adj[p, nodes].any()]
+    if not nodes or not possible_parents:
+        return []
+    n = np.asarray(nodes)
+    poss = np.asarray(possible_parents)
+    return poss[adj[np.ix_(poss, n)].any(axis=1)].tolist()
 
 
 def _flow_graph_matrix(
     adj: NDArray, latent_nodes: list[int], observed_nodes: list[int]
-) -> list[tuple[int, int]]:
-    """Build the base flow graph edge list.
+) -> NDArray:
+    """Build the base capacity matrix for max-flow (dense int32, reused in-place).
 
     The flow graph has 2m + 2 nodes where m = adj.shape[0].
     Node indices: original 0..m-1, copies m..2m-1, s=2m, t=2m+1.
     """
     m = adj.shape[0]
-    flow = np.zeros((2 * m + 2, 2 * m + 2), dtype=int)
-    s, t = 2 * m, 2 * m + 1
+    cap = np.zeros((2 * m + 2, 2 * m + 2), dtype=np.int32)
+    s = 2 * m
 
     obs = np.array(observed_nodes)
-    flow[s, obs] = 1  # s -> observed
-    flow[m + obs, t] = 1  # copy of observed -> t
+    cap[s, obs] = 1          # s -> observed
+    cap[m + obs, s + 1] = 1  # copy of observed -> t
 
     lat = np.array(latent_nodes)
-    flow[lat, m + lat] = 1  # latent -> copy of latent
+    cap[lat, m + lat] = 1    # latent -> copy of latent
 
-    rows, cols = np.nonzero(flow)
-    return list(zip(rows.tolist(), cols.tolist()))
+    return cap
 
 
 def _max_flow_st_graph(
-    flow_edges: list[tuple[int, int]],
+    cap: NDArray,
     adj: NDArray,
     latent_nodes: list[int],
     W: list[int],
     U: list[int],
 ) -> int:
-    """Compute max s-t flow using igraph."""
+    """Compute max s-t flow via scipy, modifying *cap* in-place and restoring it."""
     m = adj.shape[0]
-    extra = []
+    extra: list[tuple[int, int]] = []
     for y in latent_nodes:
         col = adj[y]
         for x in W:
             if col[x]:
+                cap[x, y] = 1
                 extra.append((x, y))
         for x in U:
             if col[x]:
+                cap[m + y, m + x] = 1
                 extra.append((m + y, m + x))
-    g = ig.Graph(n=2 * m + 2, edges=flow_edges + extra, directed=True)
-    return g.maxflow_value(2 * m, 2 * m + 1, capacity=None)
+    flow = int(_sp_maxflow(csr_matrix(cap), 2 * m, 2 * m + 1).flow_value)
+    for r, c in extra:
+        cap[r, c] = 0
+    return flow
 
 
 def _matching_criterion(
-    flow_edges: list[tuple[int, int]],
+    cap: NDArray,
     adj: NDArray,
     v: int,
     W: list[int],
@@ -218,12 +234,12 @@ def _matching_criterion(
         return False
 
     # (iii) max flow for (W, U) equals |W|
-    if _max_flow_st_graph(flow_edges, adj, latent_nodes, W, U) != len(W):
+    if _max_flow_st_graph(cap, adj, latent_nodes, W, U) != len(W):
         return False
 
     # (iv) max flow for (W ∪ {v}, U ∪ {v}) < |W| + 1
     if (
-        _max_flow_st_graph(flow_edges, adj, latent_nodes, W + [v], U + [v])
+        _max_flow_st_graph(cap, adj, latent_nodes, W + [v], U + [v])
         == len(W) + 1
     ):
         return False
@@ -404,7 +420,7 @@ def zuta(lam: NDArray | LatentDigraph) -> ZUTAResult:
 
 
 def check_matching_criterion(
-    flow_edges: list[tuple[int, int]],
+    cap: NDArray,
     adj: NDArray,
     h: int,
     latent_nodes: list[int],
@@ -458,7 +474,7 @@ def check_matching_criterion(
                 U = list(U_combo)
                 if not adj[h, U].any():
                     continue
-                if _matching_criterion(flow_edges, adj, v, W, U, latent_nodes):
+                if _matching_criterion(cap, adj, v, W, U, latent_nodes):
                     return MatchingResult(found=True, h=h, v=v, W=W, U=U)
 
     return MatchingResult(found=False, h=h)
@@ -541,14 +557,14 @@ def m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> MIDResult
     latent_nodes = [n for n in latent_nodes if n not in S]
     not_identified = list(latent_nodes)
 
-    flow_edges = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
+    cap = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
     tuple_list: list[dict] = []
 
     while latent_nodes:
         found = False
         for h in list(not_identified):
             result = check_matching_criterion(
-                flow_edges, adj, h, latent_nodes, observed_nodes, max_card
+                cap, adj, h, latent_nodes, observed_nodes, max_card
             )
             if result.found:
                 found = True
@@ -623,7 +639,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
 
     latent_nodes = [n for n in latent_nodes if n not in S]
     not_identified = list(latent_nodes)
-    flow_edges = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
+    cap = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
     tuple_list: list[dict] = []
 
     while latent_nodes:
@@ -656,7 +672,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
         found_any = False
         for h in list(not_identified):
             mc_result = check_matching_criterion(
-                flow_edges, adj, h, latent_nodes, observed_nodes, max_card
+                cap, adj, h, latent_nodes, observed_nodes, max_card
             )
             if mc_result.found:
                 found_any = True
