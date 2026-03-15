@@ -544,21 +544,36 @@ class MixedGraph:
         Returns:
             TrekSystem with system_exists and active_from fields (external IDs)
         """
-        # Get all directed edges to avoid on the left side (in external IDs)
-        avoid_left_edges = [
-            (self._vertex_nums[i], self._vertex_nums[j])
-            for i in range(self.num_nodes)
-            for j in range(self.num_nodes)
-            if self.d_adj[i, j] != 0
-        ]
+        internal_from = self.to_internal(from_nodes)
+        internal_to = self.to_internal(to_nodes)
+        internal_avoid_left = (
+            self.to_internal(avoid_left_nodes) if avoid_left_nodes else []
+        )
+        internal_avoid_right = (
+            self.to_internal(avoid_right_nodes) if avoid_right_nodes else []
+        )
+        internal_avoid_right_edges = (
+            [
+                (self._vertex_to_idx[i], self._vertex_to_idx[j])
+                for i, j in avoid_right_edges
+            ]
+            if avoid_right_edges
+            else []
+        )
 
-        return self.get_trek_system(
-            from_nodes=from_nodes,
-            to_nodes=to_nodes,
-            avoid_left_nodes=avoid_left_nodes,
-            avoid_right_nodes=avoid_right_nodes,
-            avoid_left_edges=avoid_left_edges,
-            avoid_right_edges=avoid_right_edges,
+        result = self.internal.get_half_trek_system(
+            internal_from,
+            internal_to,
+            avoid_left_nodes=internal_avoid_left,
+            avoid_right_nodes=internal_avoid_right,
+            avoid_right_edges=internal_avoid_right_edges,
+        )
+
+        return TrekSystem(
+            system_exists=result.system_exists,
+            active_from=(
+                self.to_external(result.active_from) if result.system_exists else []
+            ),
         )
 
     def get_half_trek_system_local(
@@ -566,7 +581,6 @@ class MixedGraph:
         from_nodes: list[int],
         to_nodes: list[int],
         max_hops: int,
-        avoid_left_nodes: list[int] | None = None,
         avoid_right_nodes: list[int] | None = None,
         avoid_right_edges: list[tuple[int, int]] | None = None,
     ) -> TrekSystem:
@@ -582,37 +596,16 @@ class MixedGraph:
             to_nodes: The end nodes (external vertex IDs)
             max_hops: Maximum number of hops in the original graph.
                       1 = direct children/siblings, 2 = two edges, etc.
-            avoid_left_nodes: Nodes to avoid on the left side (external IDs)
             avoid_right_nodes: Nodes to avoid on the right side (external IDs)
             avoid_right_edges: Directed edges to avoid on right side (external IDs)
 
         Returns:
             TrekSystem with system_exists and active_from fields (external IDs)
         """
-        # Get all directed edges to avoid on the left side (in external IDs)
-        avoid_left_edges = [
-            (self._vertex_nums[i], self._vertex_nums[j])
-            for i in range(self.num_nodes)
-            for j in range(self.num_nodes)
-            if self.d_adj[i, j] != 0
-        ]
-
-        # Convert all external IDs to internal indices
         internal_from = self.to_internal(from_nodes)
         internal_to = self.to_internal(to_nodes)
-        internal_avoid_left = (
-            self.to_internal(avoid_left_nodes) if avoid_left_nodes else []
-        )
         internal_avoid_right = (
             self.to_internal(avoid_right_nodes) if avoid_right_nodes else []
-        )
-        internal_avoid_left_edges = (
-            [
-                (self._vertex_to_idx[i], self._vertex_to_idx[j])
-                for i, j in avoid_left_edges
-            ]
-            if avoid_left_edges
-            else []
         )
         internal_avoid_right_edges = (
             [
@@ -623,17 +616,14 @@ class MixedGraph:
             else []
         )
 
-        result = self.internal.get_trek_system_local(
+        result = self.internal.get_half_trek_system_local(
             internal_from,
             internal_to,
             max_hops=max_hops,
-            avoid_left_nodes=internal_avoid_left,
             avoid_right_nodes=internal_avoid_right,
-            avoid_left_edges=internal_avoid_left_edges,
             avoid_right_edges=internal_avoid_right_edges,
         )
 
-        # Convert active_from back to external IDs
         return TrekSystem(
             system_exists=result.system_exists,
             active_from=(

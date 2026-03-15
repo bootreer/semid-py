@@ -27,6 +27,9 @@ class LatentDigraph:
     _tr_graph: ig.Graph | None
     """Cached trek graph"""
 
+    _half_tr_graph: ig.Graph | None
+    """Cached half-trek graph (trek graph without left-side directed edges)"""
+
     def __init__(
         self,
         adj: NDArray[np.int32] | list[int],
@@ -62,6 +65,7 @@ class LatentDigraph:
         self.num_observed = num_observed
         self.num_latents = self.adj.shape[0] - num_observed
         self._tr_graph = None
+        self._half_tr_graph = None
 
     @property
     def num_nodes(self) -> int:
@@ -243,6 +247,23 @@ class LatentDigraph:
 
         adj_mat[0:m, 0:m] = self.adj.T
         adj_mat[m : 2 * m, m : 2 * m] = self.adj
+
+        return ig.Graph.Adjacency(adj_mat, mode="directed")
+
+    def _create_half_tr_graph(self) -> ig.Graph:
+        """
+        Create a half-trek graph (trek graph without left-side directed edges).
+
+        Like _create_tr_graph but omits adj.T on the left side, so only
+        bridge edges (left->right) and right-side directed edges remain.
+        """
+        m = self.num_nodes
+        adj_mat = np.zeros((2 * m, 2 * m), dtype=np.int32)
+
+        for i in range(m):
+            adj_mat[i, m + i] = 1  # bridge edges only
+
+        adj_mat[m : 2 * m, m : 2 * m] = self.adj  # right-side directed edges
 
         return ig.Graph.Adjacency(adj_mat, mode="directed")
 
@@ -516,24 +537,25 @@ class LatentDigraph:
         max_depth: int,
         avoid_set: set[int],
         avoid_edges: set[tuple[int, int]] | None = None,
+        graph: ig.Graph | None = None,
     ) -> set[tuple[int, int]]:
         """
-        BFS on the trek graph to find edges reachable within max_depth steps.
+        BFS on a trek graph to find edges reachable within max_depth steps.
 
         Args:
             from_nodes: Start nodes (original graph indices, mapped to left copies)
             max_depth: Maximum BFS depth in the trek graph
             avoid_set: Set of trek graph node indices to avoid
             avoid_edges: Set of (src, dst) trek graph edges to avoid
+            graph: Trek graph to traverse. Defaults to self._tr_graph.
 
         Returns:
             Set of (src, dst) edges in the trek graph that are reachable
         """
-        if self._tr_graph is None:
-            self._tr_graph = self._create_tr_graph()
-
-        if avoid_edges is None:
-            avoid_edges = set()
+        if graph is None:
+            if self._tr_graph is None:
+                self._tr_graph = self._create_tr_graph()
+            graph = self._tr_graph
 
         # Start BFS from left copies of from_nodes
         valid_starts = [n for n in from_nodes if n not in avoid_set]
@@ -547,11 +569,11 @@ class LatentDigraph:
             if depth >= max_depth:
                 continue
 
-            neighbors = self._tr_graph.neighbors(current, mode="out")
+            neighbors = graph.neighbors(current, mode="out")
             for neighbor in neighbors:
                 if neighbor in avoid_set:
                     continue
-                if (current, neighbor) in avoid_edges:
+                if avoid_edges is not None and (current, neighbor) in avoid_edges:
                     continue
                 reachable_edges.add((current, neighbor))
                 if neighbor not in visited:
@@ -627,6 +649,116 @@ class LatentDigraph:
             from_nodes=from_nodes,
             to_nodes=to_nodes,
             avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            trek_avoid_edges=trek_avoid_edges,
+        )
+
+        return self._run_maxflow(flow_graph, from_nodes, to_nodes, SOURCE, SINK)
+
+    def get_half_trek_system(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        avoid_left_nodes: list[int] | None = None,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
+    ) -> TrekSystem:
+        """
+        Determines if a half-trek system exists using the cached half-trek graph.
+
+        Uses a dedicated trek graph with left-side directed edges removed,
+        avoiding the need to enumerate and filter directed edges at call time.
+
+        Args:
+            from_nodes: Source nodes for treks (left side)
+            to_nodes: Target nodes for treks (right side)
+            avoid_left_nodes: Nodes that cannot appear on left (backward) side
+            avoid_right_nodes: Nodes that cannot appear on right (forward) side
+            avoid_right_edges: Edges (i,j) that cannot be traversed forward (i->j)
+
+        Returns:
+            TrekSystem with system_exists and active_from fields
+        """
+        if avoid_left_nodes is None:
+            avoid_left_nodes = []
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+        if avoid_right_edges is None:
+            avoid_right_edges = []
+
+        if self._half_tr_graph is None:
+            self._half_tr_graph = self._create_half_tr_graph()
+
+        m = self.num_nodes
+
+        trek_avoid_edges: set[tuple[int, int]] = set()
+        for i, j in avoid_right_edges:
+            trek_avoid_edges.add((m + i, m + j))
+
+        flow_graph, SOURCE, SINK = self._build_flow_graph(
+            trek_edges=self._half_tr_graph.get_edgelist(),
+            from_nodes=from_nodes,
+            to_nodes=to_nodes,
+            avoid_left_nodes=avoid_left_nodes,
+            avoid_right_nodes=avoid_right_nodes,
+            trek_avoid_edges=trek_avoid_edges,
+        )
+
+        return self._run_maxflow(flow_graph, from_nodes, to_nodes, SOURCE, SINK)
+
+    def get_half_trek_system_local(
+        self,
+        from_nodes: list[int],
+        to_nodes: list[int],
+        max_hops: int,
+        avoid_right_nodes: list[int] | None = None,
+        avoid_right_edges: list[tuple[int, int]] | None = None,
+    ) -> TrekSystem:
+        """
+        Depth-limited half-trek system using the cached half-trek graph.
+
+        Like get_half_trek_system, but only considers half-treks of bounded length.
+
+        Args:
+            from_nodes: Source nodes for treks (left side)
+            to_nodes: Target nodes for treks (right side)
+            max_hops: Maximum number of hops in the original graph.
+            avoid_right_nodes: Nodes that cannot appear on right (forward) side
+            avoid_right_edges: Edges (i,j) that cannot be traversed forward (i->j)
+
+        Returns:
+            TrekSystem with system_exists and active_from fields
+        """
+        if avoid_right_nodes is None:
+            avoid_right_nodes = []
+        if avoid_right_edges is None:
+            avoid_right_edges = []
+
+        if self._half_tr_graph is None:
+            self._half_tr_graph = self._create_half_tr_graph()
+
+        m = self.num_nodes
+        max_depth = max_hops + 1
+
+        avoid_set = set(n + m for n in avoid_right_nodes)
+
+        trek_avoid_edges: set[tuple[int, int]] = set()
+        for i, j in avoid_right_edges:
+            trek_avoid_edges.add((m + i, m + j))
+
+        reachable_edges = self._bfs_reachable_trek_edges(
+            from_nodes,
+            max_depth,
+            avoid_set,
+            trek_avoid_edges if trek_avoid_edges else None,
+            graph=self._half_tr_graph,
+        )
+
+        flow_graph, SOURCE, SINK = self._build_flow_graph(
+            trek_edges=reachable_edges,
+            from_nodes=from_nodes,
+            to_nodes=to_nodes,
+            avoid_left_nodes=[],
             avoid_right_nodes=avoid_right_nodes,
             trek_avoid_edges=trek_avoid_edges,
         )
