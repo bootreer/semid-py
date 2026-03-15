@@ -572,6 +572,7 @@ def m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> MIDResult
                 not_identified = [n for n in not_identified if n != h]
                 tuple_list.append(
                     {
+                        "criterion": "matching",
                         "h": result.h,
                         "S": list(S),
                         "v": result.v,
