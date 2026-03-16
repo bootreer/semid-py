@@ -721,7 +721,7 @@ class MixedGraph:
     #############################################
     # Half-trek Identifiability
 
-    def htc_id(self) -> Optional[list[int]]:
+    def htc_id(self) -> list[int] | None:
         """
         Determines if a mixed graph is HTC-identifiable
 
