@@ -38,17 +38,21 @@ class LatentDigraph:
         self,
         adj: NDArray[np.int32] | list[int],
         num_observed: int | None = None,
-        nodes: int | None = None,
+        n: int | None = None,
         validate: bool = True,
     ):
         """
         Create a LatentDigraph object.
 
         Args:
-            adj: Adjacency matrix where first num_observed rows are observed nodes
+            adj: Adjacency matrix where first num_observed rows are observed nodes.
+                 Can also be a flat 1D list if n is provided.
             num_observed: Number of observed nodes. If None, all nodes are observed.
+            n: Matrix size. Required only when adj is a flat 1D list that needs
+               reshaping into an n×n matrix.
+            validate: Whether to validate the matrix. Defaults to True.
         """
-        self._adj = utils.reshape_arr(adj, nodes)
+        self._adj = utils.reshape_arr(adj, n)
 
         if validate:
             utils.validate_matrix(self._adj)

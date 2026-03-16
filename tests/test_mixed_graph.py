@@ -367,3 +367,15 @@ def test_from_edges_invalid_node_raises():
 
     with pytest.raises(ValueError, match="references a node not in vertex_nums"):
         MixedGraph.from_edges(n_nodes=2, directed=[(0, 5)])
+
+
+def test_constructor_n_param_reshapes_flat_array():
+    """n= parameter reshapes a flat 1D list into an n×n matrix."""
+    import numpy as np
+    from semid import MixedGraph
+
+    L_flat = [0, 1, 0, 0, 0, 0, 0, 0, 0]
+    O_flat = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+    g = MixedGraph(L_flat, O_flat, n=3)
+    assert g.num_nodes == 3
+    assert g.d_adj[0, 1] == 1

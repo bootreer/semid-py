@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import TYPE_CHECKING, Optional, overload
+from typing import TYPE_CHECKING, overload
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -41,8 +41,8 @@ class MixedGraph:
         self,
         d_adj: NDArray[np.int32] | list[int],
         b_adj: NDArray[np.int32] | list[int],
-        nodes: Optional[int] = None,
-        vertex_nums: Optional[list[int]] = None,
+        n: int | None = None,
+        vertex_nums: list[int] | None = None,
         validate: bool = True,
     ):
         """
@@ -51,13 +51,14 @@ class MixedGraph:
         Args:
             d_adj: Directed adjacency matrix (L)
             b_adj: Bidirected adjacency matrix (O)
-            nodes: Optional hint for reshaping arrays
+            n: Matrix size (number of nodes). Required only when d_adj/b_adj are
+               flat 1D lists or arrays that need to be reshaped into an n×n matrix.
             vertex_nums: Optional list of original vertex IDs. If None, uses [0, 1, 2, ...]
         """
         self.c_components = None
         self._tian_node_map = None
-        self.d_adj = utils.reshape_arr(d_adj, nodes)
-        self.b_adj = utils.reshape_arr(b_adj, nodes)
+        self.d_adj = utils.reshape_arr(d_adj, n)
+        self.b_adj = utils.reshape_arr(b_adj, n)
 
         if validate:
             utils.validate_matrices(self.d_adj, self.b_adj)
