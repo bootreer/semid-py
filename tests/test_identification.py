@@ -191,7 +191,7 @@ def test_ancestral_id_verma_graph():
     from semid import ancestral_id
 
     graph = MixedGraph(VERMA_L, VERMA_O)
-    result = ancestral_id(graph, tian_decompose=False)
+    result = ancestral_id(graph, decompose=False)
 
     # Ancestral ID should identify at least some edges
     assert sum(len(p) for p in result.solved_parents) > 0
@@ -205,7 +205,7 @@ def test_ancestral_id_simple_chain():
     O = np.zeros((3, 3), dtype=np.int32)
 
     graph = MixedGraph(L, O)
-    result = ancestral_id(graph, tian_decompose=False)
+    result = ancestral_id(graph, decompose=False)
 
     # Should identify all edges in a simple chain
     assert sum(len(p) for p in result.solved_parents) == 2
@@ -218,12 +218,12 @@ def test_tian_decomposition_htc():
 
     # Run without Tian decomposition
     result_no_tian = semid(
-        graph, test_global_id=False, test_generic_non_id=False, tian_decompose=False
+        graph, test_global_id=False, test_generic_non_id=False, decompose=False
     )
 
     # Run with Tian decomposition
     result_with_tian = semid(
-        graph, test_global_id=False, test_generic_non_id=False, tian_decompose=True
+        graph, test_global_id=False, test_generic_non_id=False, decompose=True
     )
 
     # Should identify same number of edges
@@ -239,7 +239,7 @@ def test_tian_decomposition_edgewise():
     graph = MixedGraph(VERMA_L, VERMA_O)
 
     # With Tian decomposition
-    result = edgewise_id(graph, tian_decompose=True)
+    result = edgewise_id(graph, decompose=True)
 
     # Should identify all 4 edges
     assert sum(len(p) for p in result.solved_parents) == 4
@@ -253,7 +253,7 @@ def test_tian_decomposition_ancestral():
     graph = MixedGraph(VERMA_L, VERMA_O)
 
     # With Tian decomposition
-    result = ancestral_id(graph, tian_decompose=True)
+    result = ancestral_id(graph, decompose=True)
 
     # Should identify at least some edges
     assert sum(len(p) for p in result.solved_parents) > 0
@@ -290,7 +290,7 @@ def test_edgewise_ts_id():
     from semid import edgewise_ts_id
 
     graph = MixedGraph(VERMA_L, VERMA_O)
-    result = edgewise_ts_id(graph, tian_decompose=False)
+    result = edgewise_ts_id(graph, decompose=False)
 
     # Should identify all 4 edges (very powerful combination)
     assert sum(len(p) for p in result.solved_parents) == 4
@@ -450,8 +450,8 @@ def test_ancestral_id_random_validation():
             O = random_undirected(n, p)
             graph = MixedGraph(L, O)
 
-            htc_result = htc_id(graph, tian_decompose=False)
-            anc_result = ancestral_id(graph, tian_decompose=False)
+            htc_result = htc_id(graph, decompose=False)
+            anc_result = ancestral_id(graph, decompose=False)
 
             # Ancestral ID should identify at least as many edges as HTC
             for node in range(n):
@@ -494,8 +494,8 @@ def test_edgewise_id_random_validation():
             O = random_undirected(n, p)
             graph = MixedGraph(L, O)
 
-            htc_result = htc_id(graph, tian_decompose=True)
-            eid_result = edgewise_id(graph, tian_decompose=True)
+            htc_result = htc_id(graph, decompose=True)
+            eid_result = edgewise_id(graph, decompose=True)
 
             # Edgewise ID should identify at least as many edges as HTC
             for node in range(n):
@@ -533,7 +533,7 @@ def test_trek_sep_id_random_validation():
             O = random_undirected(n, p)
             graph = MixedGraph(L, O)
 
-            ts_result = trek_sep_id(graph, tian_decompose=True)
+            ts_result = trek_sep_id(graph, decompose=True)
 
             # Test parameter recovery
             if sum(len(p) for p in ts_result.solved_parents) > 0:

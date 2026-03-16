@@ -170,7 +170,7 @@ def htc_identify_step(
 
 def htc_id(
     mixed_graph: MixedGraph,
-    tian_decompose: bool = True,
+    decompose: bool = True,
     max_hops: int | None = None,
 ) -> GenericIDResult:
     """
@@ -178,7 +178,7 @@ def htc_id(
 
     Args:
         mixed_graph: The mixed graph to identify
-        tian_decompose: Whether to use Tian decomposition
+        decompose: Whether to use Tian decomposition
         max_hops: Maximum number of hops for depth-limited half-trek system.
                 1 = direct children/siblings only. None = unlimited.
 
@@ -197,4 +197,4 @@ def htc_id(
             mixed_graph, unsolved_parents, solved_parents, identifier, max_hops
         )
 
-    return general_generic_id(mixed_graph, [htc_step_wrapper], tian_decompose)
+    return general_generic_id(mixed_graph, [htc_step_wrapper], decompose)

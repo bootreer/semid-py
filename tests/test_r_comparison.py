@@ -977,20 +977,20 @@ class TestEdgeCases:
 class TestParameterVariations:
     """Test algorithms with different parameter settings."""
 
-    @pytest.mark.parametrize("tian_decompose", [True, False])
+    @pytest.mark.parametrize("decompose", [True, False])
     @pytest.mark.parametrize("graph_id", ["chain_3", "diamond_4_confounded"])
-    def test_htc_tian_decompose(self, graph_id, tian_decompose, r_semid, r_converter):
-        """Test HTC with different tian_decompose settings."""
+    def test_htc_tian_decompose(self, graph_id, decompose, r_semid, r_converter):
+        """Test HTC with different decompose settings."""
         graph_data = TEST_GRAPHS[graph_id]
         L, O = graph_data["L"], graph_data["O"]
         n = L.shape[0]
 
         py_graph = MixedGraph(L, O)
-        py_result = htc_id(py_graph, tian_decompose=tian_decompose)
+        py_result = htc_id(py_graph, decompose=decompose)
 
         with localconverter(r_converter):
             r_graph = r_semid.MixedGraph(L, O)
-            r_result = r_semid.htcID(r_graph, tianDecompose=tian_decompose)
+            r_result = r_semid.htcID(r_graph, tianDecompose=decompose)
 
         py_solved = extract_py_solved_edges(py_result)
         r_solved = extract_r_solved_edges(r_result, n)

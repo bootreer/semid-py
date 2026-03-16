@@ -24,7 +24,7 @@ class GenericIDResult:
         unsolved_siblings: List of unsolved sibling nodes for each node
         identifier: Function that takes covariance matrix and returns identified parameters
         mixed_graph: The input mixed graph
-        tian_decompose: Whether Tian decomposition was used
+        decompose: Whether Tian decomposition was used
     """
 
     solved_parents: list[list[int]]
@@ -33,7 +33,7 @@ class GenericIDResult:
     unsolved_siblings: list[list[int]]
     identifier: Callable[[NDArray], IdentifierResult]
     mixed_graph: MixedGraph
-    tian_decompose: bool = False
+    decompose: bool = False
 
     def __str__(self) -> str:
         """Pretty print the result."""
@@ -48,7 +48,7 @@ class GenericIDResult:
             "Generic Identifiability Result",
             "=" * 40,
             f"Mixed Graph: {n} nodes, {num_dir_edges} directed edges, {num_bi_edges} bidirected edges",
-            f"Tian decomposition: {self.tian_decompose}",
+            f"Tian decomposition: {self.decompose}",
             "",
             "Identification Summary:",
             f"  Directed edges identified: {num_solved_dir}/{num_dir_edges}",
@@ -120,21 +120,21 @@ class SEMIDResult:
         is_generic_non_id: Whether generically non-identifiable (None if not tested)
         generic_id_result: GenericIDResult from identification algorithms
         mixed_graph: The input mixed graph
-        tian_decompose: Whether Tian decomposition was used
+        decompose: Whether Tian decomposition was used
     """
 
     is_global_id: bool | None
     is_generic_non_id: bool | None
     generic_id_result: GenericIDResult | None
     mixed_graph: MixedGraph
-    tian_decompose: bool = False
+    decompose: bool = False
 
     def __str__(self) -> str:
         """Pretty print the result."""
         lines = [
             "SEMID Result",
             "=" * 40,
-            f"Tian decomposition: {self.tian_decompose}",
+            f"Tian decomposition: {self.decompose}",
             "",
         ]
 

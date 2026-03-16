@@ -301,7 +301,7 @@ def ancestral_identify_step(
 
 def ancestral_id(
     mixed_graph: MixedGraph,
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> GenericIDResult:
     """
     Determines which edges in a mixed graph are ancestralID-identifiable
@@ -312,9 +312,9 @@ def ancestral_id(
 
     Args:
         mixed_graph: The mixed graph to analyze
-        tian_decompose: Whether to use Tian decomposition (default True)
+        decompose: Whether to use Tian decomposition (default True)
 
     Returns:
         GenericIDResult with identified edges and identifier function
     """
-    return general_generic_id(mixed_graph, [ancestral_identify_step], tian_decompose)
+    return general_generic_id(mixed_graph, [ancestral_identify_step], decompose)

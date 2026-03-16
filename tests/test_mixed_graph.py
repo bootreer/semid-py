@@ -158,15 +158,15 @@ def test_edgewise_id_custom_vertex_nums_matches_default():
     assert unsolved_default == unsolved_custom
 
 
-def test_identification_with_custom_vertex_nums_tian_decompose_false():
-    """With tian_decompose=False, identification must still work on a graph with custom vertex_nums."""
+def test_identification_with_custom_vertex_nums_decompose_false():
+    """With decompose=False, identification must still work on a graph with custom vertex_nums."""
     # Without the guard in general_generic_id, this would crash with KeyError
     # when htr_from/parents receive 0-based indices as if they were external IDs like [10, 20, 30]
     g_custom = MixedGraph(_VERMA_L, _VERMA_O, vertex_nums=[10, 20, 30, 40])
     g_default = MixedGraph(_VERMA_L, _VERMA_O)
 
-    result_custom = htc_id(g_custom, tian_decompose=False)
-    result_default = htc_id(g_default, tian_decompose=False)
+    result_custom = htc_id(g_custom, decompose=False)
+    result_default = htc_id(g_default, decompose=False)
 
     solved_custom = sum(len(p) for p in result_custom.solved_parents)
     solved_default = sum(len(p) for p in result_default.solved_parents)

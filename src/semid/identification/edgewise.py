@@ -246,7 +246,7 @@ def edgewise_identify_step(
 def edgewise_id(
     mixed_graph: MixedGraph,
     subset_size_control: int = 3,
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> GenericIDResult:
     """
     Determines which edges in a mixed graph are edgewiseID-identifiable
@@ -259,7 +259,7 @@ def edgewise_id(
         mixed_graph: `MixedGraph` object representing the linear structural equation model
         subset_size_control: Controls subset search size (default 3)
                            Searches subsets of sizes 1..k and n-k+1..n
-        tian_decompose: Whether to use Tian decomposition (Default: True)
+        decompose: Whether to use Tian decomposition (Default: True)
 
     Returns:
         GenericIDResult with identified edges and identifier function
@@ -279,14 +279,14 @@ def edgewise_id(
             subset_size_control,
         )
 
-    return general_generic_id(mixed_graph, [eid_step], tian_decompose)
+    return general_generic_id(mixed_graph, [eid_step], decompose)
 
 
 def edgewise_ts_id(
     mixed_graph: MixedGraph,
     subset_size_control: int = 3,
     max_subset_size: int = 3,
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> GenericIDResult:
     """
     Determines which edges in a mixed graph are edgewiseID+TS identifiable
@@ -301,7 +301,7 @@ def edgewise_ts_id(
         mixed_graph: The mixed graph to analyze
         subset_size_control: Max subset size for edgewise (default 3)
         max_subset_size: Max subset size for trek separation (default 3)
-        tian_decompose: Whether to use Tian decomposition (default True)
+        decompose: Whether to use Tian decomposition (default True)
 
     Returns:
         GenericIDResult with identified edges and identifier function
@@ -332,5 +332,5 @@ def edgewise_ts_id(
         )
 
     return general_generic_id(
-        mixed_graph, [htc_identify_step, eid_step, ts_step], tian_decompose
+        mixed_graph, [htc_identify_step, eid_step, ts_step], decompose
     )

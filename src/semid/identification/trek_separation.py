@@ -206,7 +206,7 @@ def trek_separation_identify_step(
 def trek_sep_id(
     mixed_graph: MixedGraph,
     max_subset_size: int = 3,
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> GenericIDResult:
     def ts_step(
         mixed_graph: MixedGraph,
@@ -218,4 +218,4 @@ def trek_sep_id(
             mixed_graph, unsolved_parents, solved_parents, identifier, max_subset_size
         )
 
-    return general_generic_id(mixed_graph, [ts_step], tian_decompose)
+    return general_generic_id(mixed_graph, [ts_step], decompose)

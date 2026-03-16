@@ -16,7 +16,7 @@ from .htc import htc_identify_step
 def general_generic_id(
     mixed_graph: MixedGraph,
     id_step_functions: list[IdentifyStepFunction],
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> GenericIDResult:
     """
     General template for generic identification algorithms.
@@ -29,7 +29,7 @@ def general_generic_id(
         id_step_functions: List of identification step functions to apply.
                             Each must conform to the IdentifyStepFunction protocol.
                             Use wrapper closures to bind algorithm-specific parameters.
-        tian_decompose: Whether to use Tian decomposition (default: True).
+        decompose: Whether to use Tian decomposition (default: True).
                         In general, enabling this will make the algorithm
                         faster and more powerful
 
@@ -47,7 +47,7 @@ def general_generic_id(
     if normalized:
         mixed_graph = MixedGraph(mixed_graph.d_adj, mixed_graph.b_adj)
 
-    if not tian_decompose:
+    if not decompose:
         unsolved_parents = [
             list(np.flatnonzero(mixed_graph.d_adj[:, i])) for i in range(m)
         ]
@@ -96,7 +96,7 @@ def general_generic_id(
         for c_comp in c_components:
             comp_graph = MixedGraph(c_comp.L, c_comp.O)
             comp_result = general_generic_id(
-                comp_graph, id_step_functions, tian_decompose=False
+                comp_graph, id_step_functions, decompose=False
             )
 
             comp_results.append(comp_result)
@@ -148,7 +148,7 @@ def general_generic_id(
         unsolved_siblings,
         identifier,
         original_graph,
-        tian_decompose,
+        decompose,
     )
 
 
@@ -160,7 +160,7 @@ def semid(
     test_global_id: bool = True,
     test_generic_non_id: bool = True,
     id_step_functions: list[IdentifyStepFunction] | None = None,
-    tian_decompose: bool = True,
+    decompose: bool = True,
 ) -> SEMIDResult:
     """
     Identifiability of linear structural equation models.
@@ -175,7 +175,7 @@ def semid(
         test_generic_non_id: Whether to test generic non-identifiability
         id_step_functions: List of identification step functions to use.
                           Defaults to [htc_identify_step]
-        tian_decompose: Whether to use Tian decomposition (default: True)
+        decompose: Whether to use Tian decomposition (default: True)
 
     Returns:
         SEMIDResult with global/generic identifiability and identified edges
@@ -207,7 +207,7 @@ def semid(
     # Test generic non-identifiability
     is_generic_non_id = None
     if test_generic_non_id:
-        if tian_decompose:
+        if decompose:
             is_generic_non_id = False
             c_components = mixed_graph.tian_decompose()
             for c_comp in c_components:
@@ -222,7 +222,7 @@ def semid(
     generic_id_result = None
     if id_step_functions:
         generic_id_result = general_generic_id(
-            mixed_graph, id_step_functions, tian_decompose
+            mixed_graph, id_step_functions, decompose
         )
 
     return SEMIDResult(
@@ -230,5 +230,5 @@ def semid(
         is_generic_non_id,
         generic_id_result,
         mixed_graph,
-        tian_decompose,
+        decompose,
     )
