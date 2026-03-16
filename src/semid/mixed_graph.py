@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Optional, overload
+from typing import TYPE_CHECKING, Optional, overload
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 import igraph as ig
 import numpy as np
@@ -107,6 +111,11 @@ class MixedGraph:
         self.internal = LatentDigraph(
             L_with_latents, num_observed=num_observed, validate=False
         )
+
+    def __repr__(self) -> str:
+        n_dir = int(np.sum(self.d_adj))
+        n_bi = int(np.sum(np.triu(self.b_adj, k=1)))
+        return f"MixedGraph(n_nodes={self.num_nodes}, n_directed={n_dir}, n_bidirected={n_bi})"
 
     @staticmethod
     def from_latent(lg: LatentDigraph) -> MixedGraph:
@@ -1031,7 +1040,7 @@ class MixedGraph:
 
         return BiNodesResult(parents, list(incoming))
 
-    def plot(self, **kwargs):
+    def plot(self, **kwargs) -> tuple[Figure, Axes]:
         """
         Plot this mixed graph.
 

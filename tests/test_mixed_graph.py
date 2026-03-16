@@ -218,7 +218,7 @@ def _dummy_identifier(Sigma):
 
 
 def test_htc_identify_step_asserts_on_non_normalized_graph():
-    with pytest.raises(AssertionError, match="0-based vertex_nums"):
+    with pytest.raises(ValueError, match="0-based vertex_nums"):
         htc_identify_step(
             _NON_NORMALIZED, _DUMMY_UNSOLVED, _DUMMY_SOLVED, _dummy_identifier
         )
@@ -239,7 +239,7 @@ def test_trek_separation_identify_step_asserts_on_non_normalized_graph():
 
 
 def test_ancestral_identify_step_asserts_on_non_normalized_graph():
-    with pytest.raises(AssertionError, match="0-based vertex_nums"):
+    with pytest.raises(ValueError, match="0-based vertex_nums"):
         ancestral_identify_step(
             _NON_NORMALIZED, _DUMMY_UNSOLVED, _DUMMY_SOLVED, _dummy_identifier
         )
@@ -291,3 +291,22 @@ def test_general_generic_id_result_matches_default_count():
     assert sum(len(p) for p in result_default.unsolved_parents) == sum(
         len(p) for p in result_custom.unsolved_parents
     )
+
+
+# ---------------------------------------------------------------------------
+# __repr__
+# ---------------------------------------------------------------------------
+
+
+def test_mixed_graph_repr():
+    import numpy as np
+    from semid import MixedGraph
+
+    L = np.array([[0, 1], [0, 0]], dtype=np.int32)
+    O = np.array([[0, 1], [1, 0]], dtype=np.int32)
+    g = MixedGraph(L, O)
+    r = repr(g)
+    assert "MixedGraph" in r
+    assert "n_nodes=2" in r
+    assert "n_directed=1" in r
+    assert "n_bidirected=1" in r

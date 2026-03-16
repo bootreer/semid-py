@@ -1,7 +1,11 @@
 """LatentDigraph: causal models with explicit latent variable nodes."""
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
 
 import igraph as ig
 import numpy as np
@@ -13,8 +17,8 @@ from collections import deque
 
 
 class LatentDigraph:
-    adj: NDArray[np.int32]
-    """Adjacency matrix L"""
+    _adj: NDArray[np.int32]
+    """Adjacency matrix L (internal; use .adj property for read-only access)"""
 
     digraph: ig.Graph
 
@@ -44,32 +48,53 @@ class LatentDigraph:
             adj: Adjacency matrix where first num_observed rows are observed nodes
             num_observed: Number of observed nodes. If None, all nodes are observed.
         """
-        self.adj = utils.reshape_arr(adj, nodes)
+        self._adj = utils.reshape_arr(adj, nodes)
 
         if validate:
-            utils.validate_matrix(self.adj)
+            utils.validate_matrix(self._adj)
 
-        rows, cols = np.nonzero(self.adj)
+        rows, cols = np.nonzero(self._adj)
         self.digraph = ig.Graph(
-            n=self.adj.shape[0],
+            n=self._adj.shape[0],
             edges=list(zip(rows.tolist(), cols.tolist())),
             directed=True,
         )
 
         if num_observed is None:
-            num_observed = self.adj.shape[0]
+            num_observed = self._adj.shape[0]
 
-        if not (0 <= num_observed <= self.adj.shape[0]):
+        if not (0 <= num_observed <= self._adj.shape[0]):
             raise ValueError("num_observed must be between 0 and number of nodes")
 
         self.num_observed = num_observed
-        self.num_latents = self.adj.shape[0] - num_observed
+        self.num_latents = self._adj.shape[0] - num_observed
         self._tr_graph = None
         self._half_tr_graph = None
 
+    def __repr__(self) -> str:
+        n_edges = int(np.sum(self._adj))
+        return (
+            f"LatentDigraph(n_observed={self.num_observed}, "
+            f"n_latents={self.num_latents}, n_edges={n_edges})"
+        )
+
     @property
     def num_nodes(self) -> int:
-        return self.adj.shape[0]
+        return self._adj.shape[0]
+
+    @property
+    def adj(self) -> NDArray[np.int32]:
+        """
+        Adjacency matrix (read-only view). Entry [i,j]=1 means i->j.
+
+        First ``num_observed`` rows/columns are observed nodes; the rest are latent.
+
+        Do not mutate this array — the graph caches derived structures that depend on it.
+        To use a modified graph, create a new LatentDigraph.
+        """
+        view = self._adj.view()
+        view.flags.writeable = False
+        return view
 
     def observed_nodes(self) -> list[int]:
         """Return list of observed node indices."""
@@ -245,8 +270,8 @@ class LatentDigraph:
         for i in range(m):
             adj_mat[i, m + i] = 1
 
-        adj_mat[0:m, 0:m] = self.adj.T
-        adj_mat[m : 2 * m, m : 2 * m] = self.adj
+        adj_mat[0:m, 0:m] = self._adj.T
+        adj_mat[m : 2 * m, m : 2 * m] = self._adj
 
         return ig.Graph.Adjacency(adj_mat, mode="directed")
 
@@ -263,7 +288,7 @@ class LatentDigraph:
         for i in range(m):
             adj_mat[i, m + i] = 1  # bridge edges only
 
-        adj_mat[m : 2 * m, m : 2 * m] = self.adj  # right-side directed edges
+        adj_mat[m : 2 * m, m : 2 * m] = self._adj  # right-side directed edges
 
         return ig.Graph.Adjacency(adj_mat, mode="directed")
 
@@ -766,7 +791,7 @@ class LatentDigraph:
         return self._run_maxflow(flow_graph, from_nodes, to_nodes, SOURCE, SINK)
 
     def induced_subgraph(self, nodes: list[int]) -> LatentDigraph:
-        new_adj = self.adj[nodes, :][:, nodes]
+        new_adj = self._adj[nodes, :][:, nodes]
         # Determine how many of the selected nodes are observed
         num_obs_in_subgraph = sum(1 for n in nodes if n < self.num_observed)
         return LatentDigraph(new_adj, num_obs_in_subgraph)
@@ -783,7 +808,7 @@ class LatentDigraph:
         layout: Literal["auto", "circle", "fr", "kk", "grid", "tree"] = "auto",
         node_labels: list[str] | None = None,
         **kwargs,
-    ):
+    ) -> tuple[Figure, Axes]:
         """
         Plot this latent digraph using matplotlib.
 

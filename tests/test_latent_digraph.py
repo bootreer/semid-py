@@ -177,3 +177,40 @@ def test_tr_from(test_case):
             f"tr_from mismatch for nodes={nodes}, "
             f"avoid_left={avoid_left}, avoid_right={avoid_right}"
         )
+
+
+# =============================================================================
+# Read-only adj property
+# =============================================================================
+
+
+def test_adj_is_read_only():
+    """LatentDigraph.adj returns a read-only view to prevent cache corruption."""
+    import numpy as np
+    import pytest
+    from semid import LatentDigraph
+
+    adj = np.array([[0, 1], [0, 0]], dtype=np.int32)
+    g = LatentDigraph(adj, num_observed=2)
+
+    assert g.adj[0, 1] == 1  # readable
+
+    with pytest.raises(ValueError, match="read-only"):
+        g.adj[0, 1] = 0  # must not be writable
+
+
+# =============================================================================
+# __repr__
+# =============================================================================
+
+
+def test_latent_digraph_repr():
+    import numpy as np
+    from semid import LatentDigraph
+
+    adj = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]], dtype=np.int32)
+    g = LatentDigraph(adj, num_observed=2)
+    r = repr(g)
+    assert "LatentDigraph" in r
+    assert "n_observed=2" in r
+    assert "n_latents=1" in r

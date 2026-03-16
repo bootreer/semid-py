@@ -140,10 +140,11 @@ def ancestral_identify_step(
         IdentifyStepResult with identified_edges, unsolved_parents,
         solved_parents, and identifier
     """
-    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
-        "ancestral_identify_step expects a graph with default 0-based vertex_nums. "
-        "Use general_generic_id() or ancestral_id() instead."
-    )
+    if mixed_graph.nodes != list(range(mixed_graph.num_nodes)):
+        raise ValueError(
+            "ancestral_identify_step expects a graph with default 0-based vertex_nums. "
+            "Use general_generic_id() or ancestral_id() instead."
+        )
     identified_edges = []
     all_nodes = mixed_graph.nodes
 

@@ -94,10 +94,11 @@ def htc_identify_step(
         IdentifyStepResult with identified_edges, unsolved_parents,
         solved_parents, and identifier
     """
-    assert mixed_graph.nodes == list(range(mixed_graph.num_nodes)), (
-        "htc_identify_step expects a graph with default 0-based vertex_nums. "
-        "Use general_generic_id() or htc_id() instead."
-    )
+    if mixed_graph.nodes != list(range(mixed_graph.num_nodes)):
+        raise ValueError(
+            "htc_identify_step expects a graph with default 0-based vertex_nums. "
+            "Use general_generic_id() or htc_id() instead."
+        )
     identified_edges = []
     all_nodes = list(range(mixed_graph.num_nodes))
 

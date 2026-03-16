@@ -13,7 +13,7 @@ def subsets_of_size(items: list, size: int) -> Iterator[list]:
         yield list(subset)
 
 
-def validate_matrix(mat: NDArray[np.int32]):
+def validate_matrix(mat: NDArray[np.int32]) -> None:
     if mat.ndim != 2 or mat.shape[0] != mat.shape[1]:
         raise ValueError("Input matrix must be square")
 
@@ -24,7 +24,7 @@ def validate_matrix(mat: NDArray[np.int32]):
         raise ValueError("Input matrix must have 0's along the diagonal.")
 
 
-def validate_matrices(L: NDArray[np.int32], O: NDArray[np.int32]):  # noqa: E741
+def validate_matrices(L: NDArray[np.int32], O: NDArray[np.int32]) -> None:  # noqa: E741
     if L.shape != O.shape:
         raise ValueError("L and O must have the same shape.")
 
