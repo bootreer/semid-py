@@ -2,6 +2,7 @@
 from .identification import (
     ExtMIDResult,
     GenericIDResult,
+    IdentificationStep,
     IdentifierResult,
     IdentifyStepResult,
     LfhtcIdentifyStepResult,
@@ -81,6 +82,7 @@ __all__ = [
     "LocalBBResult",
     "MIDResult",
     "ExtMIDResult",
+    "IdentificationStep",
     "check_criterion",
     "wholematrix_criterion",
 ]

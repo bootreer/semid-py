@@ -7,6 +7,7 @@ from .htc import htc_id, htc_identify_step
 from .lfhtc import lf_htc_id, lf_htc_identify_step
 from .factor_analysis import (
     ExtMIDResult,
+    IdentificationStep,
     LocalBBResult,
     MatchingResult,
     MIDResult,
@@ -61,4 +62,5 @@ __all__ = [
     "LocalBBResult",
     "MIDResult",
     "ExtMIDResult",
+    "IdentificationStep",
 ]

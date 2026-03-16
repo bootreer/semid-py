@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from itertools import combinations
 from math import comb
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,6 +22,28 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import maximum_flow as _sp_maxflow
 
 from semid.latent_digraph import LatentDigraph
+
+
+@dataclass
+class IdentificationStep:
+    """
+    A single step in the M-identification or Ext-M-identification process.
+
+    Attributes:
+        criterion: Which criterion identified this step — "matching" or "localBB".
+        h: Latent node being identified (matching criterion only).
+        v: Observed anchor node (matching criterion only).
+        W: Witness observed node set (matching criterion only).
+        new_nodes_in_S: Newly identified observed nodes (localBB criterion only).
+        U: The U set of unidentified latent nodes (localBB criterion only).
+    """
+
+    criterion: Literal["matching", "localBB"]
+    h: int | None = None
+    v: int | None = None
+    W: list[int] | None = None
+    new_nodes_in_S: list[int] | None = None
+    U: list[int] | None = None
 
 
 @dataclass
@@ -57,7 +80,7 @@ class MIDResult:
     """Result of M-identifiability check."""
 
     identifiable: bool
-    tuple_list: list[dict] = field(default_factory=list)
+    steps: list[IdentificationStep] = field(default_factory=list)
     latent_nodes: list[int] = field(default_factory=list)
     observed_nodes: list[int] = field(default_factory=list)
 
@@ -68,11 +91,11 @@ class MIDResult:
             f"Identifiable: {self.identifiable}",
             f"Latent nodes ({len(self.latent_nodes)}): {self.latent_nodes}",
             f"Observed nodes ({len(self.observed_nodes)}): {self.observed_nodes}",
-            f"Steps: {len(self.tuple_list)}",
+            f"Steps: {len(self.steps)}",
         ]
-        for i, t in enumerate(self.tuple_list):
-            new_nodes = t.get("new_nodes_in_S", [t.get("h")])
-            lines.append(f"  Step {i + 1} [{t['criterion']}]: identified {new_nodes}")
+        for i, step in enumerate(self.steps):
+            new_nodes = step.new_nodes_in_S if step.new_nodes_in_S else [step.h]
+            lines.append(f"  Step {i + 1} [{step.criterion}]: identified {new_nodes}")
         return "\n".join(lines)
 
 
@@ -81,7 +104,7 @@ class ExtMIDResult:
     """Result of extended M-identifiability check."""
 
     identifiable: bool
-    tuple_list: list[dict] = field(default_factory=list)
+    steps: list[IdentificationStep] = field(default_factory=list)
     latent_nodes: list[int] = field(default_factory=list)
     observed_nodes: list[int] = field(default_factory=list)
 
@@ -92,14 +115,17 @@ class ExtMIDResult:
             f"Identifiable: {self.identifiable}",
             f"Latent nodes ({len(self.latent_nodes)}): {self.latent_nodes}",
             f"Observed nodes ({len(self.observed_nodes)}): {self.observed_nodes}",
-            f"Steps: {len(self.tuple_list)}",
+            f"Steps: {len(self.steps)}",
         ]
-        for i, t in enumerate(self.tuple_list):
-            if t["criterion"] == "localBB":
-                new_nodes = t.get("new_nodes_in_S", [])
-                lines.append(f"  Step {i + 1} [localBB]: identified {new_nodes}, U={t.get('U')}")
+        for i, step in enumerate(self.steps):
+            if step.criterion == "localBB":
+                lines.append(
+                    f"  Step {i + 1} [localBB]: identified {step.new_nodes_in_S}, U={step.U}"
+                )
             else:
-                lines.append(f"  Step {i + 1} [matching]: identified h={t.get('h')}, v={t.get('v')}, W={t.get('W')}")
+                lines.append(
+                    f"  Step {i + 1} [matching]: identified h={step.h}, v={step.v}, W={step.W}"
+                )
         return "\n".join(lines)
 
 
@@ -558,7 +584,7 @@ def m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> MIDResult
     not_identified = list(latent_nodes)
 
     cap = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
-    tuple_list: list[dict] = []
+    steps: list[IdentificationStep] = []
 
     while latent_nodes:
         found = False
@@ -570,29 +596,28 @@ def m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> MIDResult
                 found = True
                 latent_nodes = [n for n in latent_nodes if n != h]
                 not_identified = [n for n in not_identified if n != h]
-                tuple_list.append(
-                    {
-                        "criterion": "matching",
-                        "h": result.h,
-                        "S": list(S),
-                        "v": result.v,
-                        "W": result.W,
-                        "U": result.U,
-                    }
+                steps.append(
+                    IdentificationStep(
+                        criterion="matching",
+                        h=result.h,
+                        v=result.v,
+                        W=result.W,
+                        U=result.U,
+                    )
                 )
                 S.append(h)
 
         if not found:
             return MIDResult(
                 identifiable=False,
-                tuple_list=tuple_list,
+                steps=steps,
                 latent_nodes=latent_nodes_orig,
                 observed_nodes=observed_nodes,
             )
 
     return MIDResult(
         identifiable=True,
-        tuple_list=tuple_list,
+        steps=steps,
         latent_nodes=latent_nodes_orig,
         observed_nodes=observed_nodes,
     )
@@ -641,7 +666,7 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
     latent_nodes = [n for n in latent_nodes if n not in S]
     not_identified = list(latent_nodes)
     cap = _flow_graph_matrix(adj, latent_nodes, observed_nodes)
-    tuple_list: list[dict] = []
+    steps: list[IdentificationStep] = []
 
     while latent_nodes:
         # first try local BB criterion
@@ -649,13 +674,12 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
         if bb_result.found:
             assert bb_result.new_nodes_in_S is not None
 
-            tuple_list.append(
-                {
-                    "criterion": "localBB",
-                    "S": list(S),
-                    "new_nodes_in_S": bb_result.new_nodes_in_S,
-                    "U": bb_result.U,
-                }
+            steps.append(
+                IdentificationStep(
+                    criterion="localBB",
+                    new_nodes_in_S=bb_result.new_nodes_in_S,
+                    U=bb_result.U,
+                )
             )
             latent_nodes = [
                 n for n in latent_nodes if n not in bb_result.new_nodes_in_S
@@ -679,15 +703,14 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
                 found_any = True
                 latent_nodes = [n for n in latent_nodes if n != h]
                 not_identified = [n for n in not_identified if n != h]
-                tuple_list.append(
-                    {
-                        "criterion": "matching",
-                        "h": mc_result.h,
-                        "S": list(S),
-                        "v": mc_result.v,
-                        "W": mc_result.W,
-                        "U": mc_result.U,
-                    }
+                steps.append(
+                    IdentificationStep(
+                        criterion="matching",
+                        h=mc_result.h,
+                        v=mc_result.v,
+                        W=mc_result.W,
+                        U=mc_result.U,
+                    )
                 )
                 S.append(h)
 
@@ -701,14 +724,14 @@ def ext_m_id(lam: NDArray | LatentDigraph, max_card: int | None = None) -> ExtMI
         if not found_any:
             return ExtMIDResult(
                 identifiable=False,
-                tuple_list=tuple_list,
+                steps=steps,
                 latent_nodes=latent_nodes_orig,
                 observed_nodes=observed_nodes_orig,
             )
 
     return ExtMIDResult(
         identifiable=True,
-        tuple_list=tuple_list,
+        steps=steps,
         latent_nodes=latent_nodes_orig,
         observed_nodes=observed_nodes_orig,
     )
