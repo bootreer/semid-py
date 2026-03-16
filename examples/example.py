@@ -32,7 +32,7 @@ def _(graph, semid):
 
 @app.cell
 def _(graph, semid):
-    semid_res = semid.semid(graph, tian_decompose=True)
+    semid_res = semid.semid(graph, decompose=True)
     print(semid_res)
     return
 
