@@ -106,11 +106,16 @@ def test_3x7_zuta(graphs_3x7: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 
 SAMPLE_SIZE_4x9 = 10000
+_CHUNKS_4x9 = 20  # chunks distributed across xdist workers
 
 
-def _load_4x9_sample() -> list[dict]:
+def _load_4x9_chunks() -> list[list[dict]] | None:
+    """Load and chunk the 4x9 sample at collection time for parametrize.
+
+    Returns None if the data file is not available.
+    """
     if not RESULTS_4x9.exists():
-        pytest.skip("R results file not found")
+        return None
     with open(RESULTS_4x9) as f:
         data = json.load(f)
 
@@ -127,18 +132,25 @@ def _load_4x9_sample() -> list[dict]:
     )
     sample = diff_cases + [same_cases[i] for i in indices]
     rng.shuffle(sample)
-    return sample
+
+    size = max(1, (len(sample) + _CHUNKS_4x9 - 1) // _CHUNKS_4x9)
+    return [sample[i : i + size] for i in range(0, len(sample), size)]
 
 
-@pytest.fixture(scope="module")
-def graphs_4x9() -> list[dict]:
-    return _load_4x9_sample()
+_4x9_chunks = _load_4x9_chunks()
+_4x9_params: list = (
+    _4x9_chunks
+    if _4x9_chunks is not None
+    else [pytest.param([], marks=pytest.mark.skip(reason="R results file not found"))]
+)
+_4x9_ids = [f"chunk{i}" for i in range(len(_4x9_params))]
 
 
-def test_4x9_m_id(graphs_4x9: list[dict]) -> None:
+@pytest.mark.parametrize("chunk", _4x9_params, ids=_4x9_ids)
+def test_4x9_m_id(chunk: list[dict]) -> None:
     """Validate m_id against sampled 4-latent 9-observed graphs."""
     mismatches = []
-    for i, g in enumerate(graphs_4x9):
+    for i, g in enumerate(chunk):
         lam = _extract_lambda(g, 4, 9)
         result = m_id(lam)
         if result.identifiable != g["Mid"]:
@@ -147,15 +159,16 @@ def test_4x9_m_id(graphs_4x9: list[dict]) -> None:
                 f"edges={g['edges']}"
             )
     assert mismatches == [], (
-        f"{len(mismatches)} / {len(graphs_4x9)} mismatches:\n"
+        f"{len(mismatches)} / {len(chunk)} mismatches:\n"
         + "\n".join(mismatches[:20])
     )
 
 
-def test_4x9_ext_m_id(graphs_4x9: list[dict]) -> None:
+@pytest.mark.parametrize("chunk", _4x9_params, ids=_4x9_ids)
+def test_4x9_ext_m_id(chunk: list[dict]) -> None:
     """Validate ext_m_id against sampled 4-latent 9-observed graphs."""
     mismatches = []
-    for i, g in enumerate(graphs_4x9):
+    for i, g in enumerate(chunk):
         lam = _extract_lambda(g, 4, 9)
         result = ext_m_id(lam)
         if result.identifiable != g["ExtMid"]:
@@ -165,15 +178,16 @@ def test_4x9_ext_m_id(graphs_4x9: list[dict]) -> None:
                 f"{lam}"
             )
     assert mismatches == [], (
-        f"{len(mismatches)} / {len(graphs_4x9)} mismatches:\n"
+        f"{len(mismatches)} / {len(chunk)} mismatches:\n"
         + "\n".join(mismatches[:20])
     )
 
 
-def test_4x9_zuta(graphs_4x9: list[dict]) -> None:
+@pytest.mark.parametrize("chunk", _4x9_params, ids=_4x9_ids)
+def test_4x9_zuta(chunk: list[dict]) -> None:
     """Validate zuta against sampled 4-latent 9-observed graphs."""
     mismatches = []
-    for i, g in enumerate(graphs_4x9):
+    for i, g in enumerate(chunk):
         lam = _extract_lambda(g, 4, 9)
         result = zuta(lam)
         if result.zuta != g["ZUTA"]:
@@ -182,7 +196,7 @@ def test_4x9_zuta(graphs_4x9: list[dict]) -> None:
                 f"edges={g['edges']}"
             )
     assert mismatches == [], (
-        f"{len(mismatches)} / {len(graphs_4x9)} mismatches:\n"
+        f"{len(mismatches)} / {len(chunk)} mismatches:\n"
         + "\n".join(mismatches[:20])
     )
 

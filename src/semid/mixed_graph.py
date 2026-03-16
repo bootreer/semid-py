@@ -171,10 +171,6 @@ class MixedGraph:
         """
         Create a MixedGraph from edge lists.
 
-        This is the preferred constructor for interactive use and quick prototyping.
-        For models with many edges, passing adjacency matrices directly is more
-        efficient.
-
         Args:
             n_nodes: Number of nodes in the graph.
             directed: List of (source, target) tuples for directed edges (->).
@@ -200,7 +196,7 @@ class MixedGraph:
             >>> g.parents(2)
             [1]
             >>> g.siblings(0)
-            [0, 2]
+            [2]
         """
         if directed is None:
             directed = []

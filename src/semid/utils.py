@@ -39,16 +39,16 @@ def validate_matrices(L: NDArray[np.int32], O: NDArray[np.int32]) -> None:  # no
 
 
 def reshape_arr(
-    matrix: NDArray[np.int32] | list[int], nodes: int | None = None
+    matrix: NDArray[np.int32] | list[int], n: int | None = None
 ) -> NDArray[np.int32]:
     if isinstance(matrix, np.ndarray) and matrix.ndim > 1:
         if matrix.ndim != 2:
             raise ValueError("Matrix must be 2-dimensional")
         return matrix.astype(np.int32)
     else:
-        if nodes is None:
+        if n is None:
             raise ValueError("node count required for 1D array or list")
-        return np.array(matrix, dtype=np.int32).reshape((nodes, nodes))
+        return np.array(matrix, dtype=np.int32).reshape((n, n))
 
 
 @dataclass(slots=True)
