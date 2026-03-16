@@ -159,6 +159,83 @@ class MixedGraph:
         L = lg.adj[np.ix_(observed, observed)]
         return MixedGraph(L, O)
 
+    @classmethod
+    def from_edges(
+        cls,
+        n_nodes: int,
+        directed: list[tuple[int, int]] | None = None,
+        bidirected: list[tuple[int, int]] | None = None,
+        vertex_nums: list[int] | None = None,
+    ) -> MixedGraph:
+        """
+        Create a MixedGraph from edge lists.
+
+        This is the preferred constructor for interactive use and quick prototyping.
+        For models with many edges, passing adjacency matrices directly is more
+        efficient.
+
+        Args:
+            n_nodes: Number of nodes in the graph.
+            directed: List of (source, target) tuples for directed edges (->).
+                      Node labels must match vertex_nums if provided, or be
+                      integers in [0, n_nodes) otherwise.
+            bidirected: List of (a, b) tuples for bidirected edges (<->).
+                        Order within each tuple does not matter.
+            vertex_nums: External vertex IDs, one per node. Defaults to
+                         [0, 1, ..., n_nodes-1].
+
+        Returns:
+            MixedGraph with the specified edges.
+
+        Raises:
+            ValueError: If an edge references a node not in vertex_nums.
+
+        Examples:
+            >>> g = MixedGraph.from_edges(
+            ...     n_nodes=3,
+            ...     directed=[(0, 1), (1, 2)],
+            ...     bidirected=[(0, 2)],
+            ... )
+            >>> g.parents(2)
+            [1]
+            >>> g.siblings(0)
+            [0, 2]
+        """
+        if directed is None:
+            directed = []
+        if bidirected is None:
+            bidirected = []
+
+        if vertex_nums is None:
+            vertex_nums = list(range(n_nodes))
+
+        if len(vertex_nums) != n_nodes:
+            raise ValueError(
+                f"vertex_nums has {len(vertex_nums)} entries but n_nodes={n_nodes}"
+            )
+
+        node_to_idx = {v: i for i, v in enumerate(vertex_nums)}
+
+        d_adj = np.zeros((n_nodes, n_nodes), dtype=np.int32)
+        for src, dst in directed:
+            if src not in node_to_idx or dst not in node_to_idx:
+                raise ValueError(
+                    f"Edge ({src}, {dst}) references a node not in vertex_nums={vertex_nums}"
+                )
+            d_adj[node_to_idx[src], node_to_idx[dst]] = 1
+
+        b_adj = np.zeros((n_nodes, n_nodes), dtype=np.int32)
+        for a, b in bidirected:
+            if a not in node_to_idx or b not in node_to_idx:
+                raise ValueError(
+                    f"Bidirected edge ({a}, {b}) references a node not in vertex_nums={vertex_nums}"
+                )
+            ia, ib = node_to_idx[a], node_to_idx[b]
+            b_adj[ia, ib] = 1
+            b_adj[ib, ia] = 1
+
+        return cls(d_adj, b_adj, vertex_nums=vertex_nums)
+
     @overload
     def to_internal(self, nodes: int) -> int: ...
 

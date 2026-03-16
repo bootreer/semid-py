@@ -310,3 +310,60 @@ def test_mixed_graph_repr():
     assert "n_nodes=2" in r
     assert "n_directed=1" in r
     assert "n_bidirected=1" in r
+
+
+# ---------------------------------------------------------------------------
+# MixedGraph.from_edges
+# ---------------------------------------------------------------------------
+
+
+def test_from_edges_basic():
+    """from_edges constructs the same graph as the matrix constructor."""
+    import numpy as np
+    from semid import MixedGraph
+
+    L = np.array([[0, 1, 0], [0, 0, 1], [0, 0, 0]], dtype=np.int32)
+    O = np.array([[0, 0, 1], [0, 0, 0], [1, 0, 0]], dtype=np.int32)
+    g_mat = MixedGraph(L, O)
+
+    g_edges = MixedGraph.from_edges(
+        n_nodes=3,
+        directed=[(0, 1), (1, 2)],
+        bidirected=[(0, 2)],
+    )
+
+    np.testing.assert_array_equal(g_mat.d_adj, g_edges.d_adj)
+    np.testing.assert_array_equal(g_mat.b_adj, g_edges.b_adj)
+
+
+def test_from_edges_with_custom_vertex_nums():
+    """from_edges supports custom vertex numbering."""
+    from semid import MixedGraph
+
+    g = MixedGraph.from_edges(
+        n_nodes=3,
+        directed=[(10, 20), (20, 30)],
+        bidirected=[(10, 30)],
+        vertex_nums=[10, 20, 30],
+    )
+    assert g.nodes == [10, 20, 30]
+    assert 20 in g.parents(30)
+
+
+def test_from_edges_empty():
+    """from_edges with no edges creates an empty graph."""
+    from semid import MixedGraph
+
+    g = MixedGraph.from_edges(n_nodes=4)
+    assert g.num_nodes == 4
+    assert g.parents(0) == []
+    assert g.siblings(0) == []
+
+
+def test_from_edges_invalid_node_raises():
+    """from_edges raises ValueError for edges referencing unknown nodes."""
+    import pytest
+    from semid import MixedGraph
+
+    with pytest.raises(ValueError, match="references a node not in vertex_nums"):
+        MixedGraph.from_edges(n_nodes=2, directed=[(0, 5)])
