@@ -13,6 +13,44 @@ from .types import GenericIDResult, IdentifyStepFunction, SEMIDResult
 from .htc import htc_identify_step
 
 
+def global_id(graph: MixedGraph) -> bool:
+    """Check whether a mixed graph is globally identifiable.
+
+    A graph is globally identifiable if every parameter can be uniquely
+    recovered from the covariance matrix for all generic parameter values.
+
+    Args:
+        graph: The mixed graph to check.
+
+    Returns:
+        True if the graph is globally identifiable, False otherwise.
+    """
+    if not graph.directed.is_dag():
+        return False
+
+    comps = graph.bidirected_components()
+    while len(comps) > 0:
+        comp, *comps = comps
+        sinks = [
+            i for i, deg in enumerate(comp.directed.degree(mode="out")) if deg == 0
+        ]
+
+        if len(sinks) == 1:
+            return False
+        else:
+            for s in sinks:
+                # igraph.neighborhood returns internal indices
+                ancestors_internal = comp.directed.neighborhood(
+                    vertices=s, order=comp.num_nodes, mode="in"
+                )
+                if len(ancestors_internal) > 1:
+                    ancestors_external = comp.to_external(ancestors_internal)
+                    ag = comp.induced_subgraph(ancestors_external)
+                    comps.extend(ag.bidirected_components())
+
+    return True
+
+
 def general_generic_id(
     mixed_graph: MixedGraph,
     id_step_functions: list[IdentifyStepFunction],
@@ -202,7 +240,7 @@ def semid(
     # Test global identifiability
     is_global_id = None
     if test_global_id:
-        is_global_id = mixed_graph.global_id()
+        is_global_id = global_id(mixed_graph)
 
     # Test generic non-identifiability
     is_generic_non_id = None

@@ -3,7 +3,7 @@ import pytest
 
 from semid import MixedGraph
 from semid.identification.ancestral import ancestral_identify_step
-from semid.identification.algorithm import general_generic_id
+from semid.identification.algorithm import general_generic_id, global_id
 from semid.identification.edgewise import edgewise_id, edgewise_identify_step
 from semid.identification.htc import htc_id, htc_identify_step
 from semid.identification.trek_separation import trek_separation_identify_step
@@ -40,7 +40,7 @@ def test_non_htc_id(graph: Graph):
 @pytest.mark.parametrize("graph", GRAPH_EXAMPLES)
 def test_global_id(graph: Graph):
     mg: MixedGraph = graph.to_mixed_graph()
-    result = mg.global_id()
+    result = global_id(mg)
 
     if graph.global_id == 1:
         assert result is True

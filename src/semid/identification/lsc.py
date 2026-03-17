@@ -44,12 +44,18 @@ class LatentSubgraph:
         L = g.adj
 
         # Compute semi-direct effects: L_obs + L_obs_lat * (I - L_lat)^-1 * L_lat_obs
-        semidirect_adj: NDArray = L[:n_obs, :n_obs] + L[
-            :n_obs, n_obs:n_tot
-        ] @ np.linalg.solve(
-            np.eye(n_lat) - L[n_obs:n_tot, n_obs:n_tot],
-            L[n_obs:n_tot, :n_obs],
-        )
+        try:
+            semidirect_adj: NDArray = L[:n_obs, :n_obs] + L[
+                :n_obs, n_obs:n_tot
+            ] @ np.linalg.solve(
+                np.eye(n_lat) - L[n_obs:n_tot, n_obs:n_tot],
+                L[n_obs:n_tot, :n_obs],
+            )
+        except np.linalg.LinAlgError as e:
+            raise ValueError(
+                "LSC requires an acyclic latent subgraph, but (I - L_lat) is singular. "
+                "Check for directed cycles among latent nodes."
+            ) from e
         semidirect_adj = (semidirect_adj > 0).astype(np.int32)
 
         return LatentDigraph(semidirect_adj, num_observed=n_obs)

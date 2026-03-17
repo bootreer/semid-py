@@ -177,7 +177,7 @@ def _find_lf_htc_system(
     graph: LatentDigraph,
     node: int,
     observed_parents: list[int],
-    solved_nodes: list[int],
+    solved_nodes: set[int],
     observed_nodes: list[int],
     latent_nodes: list[int],
     latents_to_control: list[int],
@@ -322,7 +322,7 @@ def lf_htc_identify_step(
     num_observed = len(observed_nodes)
     edge_mat = graph.adj
     edges_between_observed = np.argwhere(edge_mat[:num_observed, :num_observed] == 1)
-    solved_nodes = [i for i in range(num_observed) if len(unsolved_parents[i]) == 0]
+    solved_nodes = {i for i in range(num_observed) if len(unsolved_parents[i]) == 0}
 
     # Only latent nodes with >= 4 children may be possibly in L
     children_of_latent_nodes = [graph.children([x]) for x in latent_nodes]
@@ -375,7 +375,7 @@ def lf_htc_identify_step(
             active_froms[i] = Y
             Zs[i] = Z
             Ls[i] = L
-            solved_nodes.append(i)
+            solved_nodes.add(i)
 
     return LfhtcIdentifyStepResult(
         identified_edges=identified_edges,

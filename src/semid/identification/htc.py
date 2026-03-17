@@ -103,7 +103,7 @@ def htc_identify_step(
     all_nodes = list(range(mixed_graph.num_nodes))
 
     # Find nodes that are already solved (no unsolved parents)
-    solved_nodes = [i for i in all_nodes if len(unsolved_parents[i]) == 0]
+    solved_nodes = {i for i in all_nodes if len(unsolved_parents[i]) == 0}
 
     for i in all_nodes:
         if i in solved_nodes:
@@ -158,7 +158,7 @@ def htc_identify_step(
                 i,
                 htr_sources,
             )
-            solved_nodes.append(i)
+            solved_nodes.add(i)
 
     return IdentifyStepResult(
         identified_edges,

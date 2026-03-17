@@ -480,7 +480,8 @@ class MixedGraph:
             nodes: Single node or list of nodes (external vertex IDs)
 
         Returns:
-            Sorted list of sibling nodes (external IDs), not including input nodes
+            Sorted list of sibling nodes (external IDs), may include input nodes
+            if they are mutual siblings (i.e. connected by a bidirected edge)
         """
         if isinstance(nodes, int):
             nodes = [nodes]
@@ -1042,32 +1043,6 @@ class MixedGraph:
             for cluster in comps
             if len(cluster) > 1
         ]
-
-    def global_id(self) -> bool:
-        if not self.directed.is_dag():
-            return False
-
-        comps = self.bidirected_components()
-        while len(comps) > 0:
-            comp, *comps = comps
-            sinks = [
-                i for i, deg in enumerate(comp.directed.degree(mode="out")) if deg == 0
-            ]
-
-            if len(sinks) == 1:
-                return False
-            else:
-                for s in sinks:
-                    # igraph.neighborhood returns internal indices
-                    ancestors_internal = comp.directed.neighborhood(
-                        vertices=s, order=comp.num_nodes, mode="in"
-                    )
-                    if len(ancestors_internal) > 1:
-                        ancestors_external = comp.to_external(ancestors_internal)
-                        ag = comp.induced_subgraph(ancestors_external)
-                        comps.extend(ag.bidirected_components())
-
-        return True
 
     def get_mixed_comp(self, sub_nodes: list[int], node: int) -> BiNodesResult:
         """

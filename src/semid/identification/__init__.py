@@ -1,7 +1,7 @@
 """Identification algorithms for linear structural equation models."""
 
 from .ancestral import ancestral_id, ancestral_identify_step
-from .algorithm import general_generic_id, semid
+from .algorithm import general_generic_id, global_id, semid
 from .edgewise import edgewise_id, edgewise_identify_step, edgewise_ts_id
 from .htc import htc_id, htc_identify_step
 from .lfhtc import lf_htc_id, lf_htc_identify_step
@@ -33,6 +33,7 @@ from .types import (
 __all__ = [
     "semid",
     "general_generic_id",
+    "global_id",
     "htc_id",
     "htc_identify_step",
     "edgewise_id",

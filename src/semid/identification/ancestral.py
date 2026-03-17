@@ -149,7 +149,7 @@ def ancestral_identify_step(
     all_nodes = mixed_graph.nodes
 
     # Find nodes that are already solved (no unsolved parents)
-    solved_nodes = [i for i in all_nodes if len(unsolved_parents[i]) == 0]
+    solved_nodes = {i for i in all_nodes if len(unsolved_parents[i]) == 0}
 
     # Cache ancestral components for each node
     ancestral_comps = {}
@@ -223,7 +223,7 @@ def ancestral_identify_step(
                     anc_info["component"],
                 )
 
-                solved_nodes.append(i)
+                solved_nodes.add(i)
                 continue
 
         # Try second ancestor graph
@@ -286,7 +286,7 @@ def ancestral_identify_step(
                         tian_comp,
                     )
 
-                    solved_nodes.append(i)
+                    solved_nodes.add(i)
 
         except ValueError:
             pass
