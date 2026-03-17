@@ -641,6 +641,164 @@ LATENT_DIGRAPH_EXAMPLES: list[LatentDigraphTestCase] = [
 ]
 
 
+@dataclass
+class LfhtcExample:
+    """Test case for LF-HTC identification on LatentDigraph examples from R package."""
+
+    name: str
+    L: list[int]
+    dim: tuple[int, int]
+    num_observed: int
+    lfhtc_id: bool
+    """True = all edges identified, False = not all edges identified"""
+
+    def to_latent_digraph(self) -> LatentDigraph:
+        adj = np.reshape(self.L, self.dim).astype(np.int32)
+        return LatentDigraph(adj, num_observed=self.num_observed)
+
+
+# LF-HTC examples ported from R SEMID/tests/testthat/graphExamples.R (digraphExamples)
+# Nodes are 0-indexed. Observed nodes: 0..num_observed-1, latents: num_observed..
+# fmt: off
+LFHTC_EXAMPLES: list[LfhtcExample] = [
+    # Instrumental variables: Z->X->Y, latent U->X,Y
+    LfhtcExample(
+        name="instrumental_variables",
+        L=[0, 1, 0, 0,
+           0, 0, 1, 0,
+           0, 0, 0, 0,
+           0, 1, 1, 0],
+        dim=(4, 4),
+        num_observed=3,
+        lfhtc_id=True,
+    ),
+    # One global latent variable connected to all 5 observed
+    LfhtcExample(
+        name="one_global_latent",
+        L=[0, 1, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=True,
+    ),
+    # Figure 1 from paper
+    LfhtcExample(
+        name="figure_1",
+        L=[0, 0, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 1, 1, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=True,
+    ),
+    # Figure 2 from paper
+    LfhtcExample(
+        name="figure_2",
+        L=[0, 1, 1, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 1, 1, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=False,
+    ),
+    # Figure 3a from paper
+    LfhtcExample(
+        name="figure_3a",
+        L=[0, 0, 1, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 1, 0, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=False,
+    ),
+    # Figure 3b from paper
+    LfhtcExample(
+        name="figure_3b",
+        L=[0, 1, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 1, 0, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=False,
+    ),
+    # Figure 5 from paper
+    LfhtcExample(
+        name="figure_5",
+        L=[0, 0, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0,
+           0, 0, 0, 1, 1, 0,
+           0, 0, 0, 0, 1, 0,
+           0, 0, 0, 0, 0, 0,
+           1, 0, 1, 1, 0, 0],
+        dim=(6, 6),
+        num_observed=5,
+        lfhtc_id=True,
+    ),
+    # Figure 6 from paper (3 latents)
+    LfhtcExample(
+        name="figure_6",
+        L=[0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 1, 0, 0, 0,
+           0, 0, 0, 0, 1, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 0, 0, 0, 0,
+           0, 0, 0, 1, 1, 0, 0, 0,
+           0, 0, 1, 0, 1, 0, 0, 0],
+        dim=(8, 8),
+        num_observed=5,
+        lfhtc_id=False,
+    ),
+    # Figure 10 from paper (2 latents, 6 observed)
+    LfhtcExample(
+        name="figure_10",
+        L=[0, 1, 0, 0, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 1, 1, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 0, 0, 0, 0,
+           0, 0, 0, 1, 1, 1, 0, 0],
+        dim=(8, 8),
+        num_observed=6,
+        lfhtc_id=True,
+    ),
+    # Not enough to iterate over L subset (2 latents, 6 observed)
+    LfhtcExample(
+        name="not_enough_to_iterate",
+        L=[0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 1, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           0, 0, 0, 0, 0, 0, 0, 0,
+           1, 1, 1, 1, 1, 1, 0, 0,
+           1, 0, 0, 1, 1, 1, 0, 0],
+        dim=(8, 8),
+        num_observed=6,
+        lfhtc_id=True,
+    ),
+]
+# fmt: on
+
+
 # Helper function for testing parameter identification
 def random_identification_test(identifier, L, O, solved_parents, seed=None): # noqa: E741
     if seed is not None:

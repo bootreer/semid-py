@@ -118,8 +118,8 @@ class MixedGraph:
         n_bi = int(np.sum(np.triu(self.b_adj, k=1)))
         return f"MixedGraph(n_nodes={self.num_nodes}, n_directed={n_dir}, n_bidirected={n_bi})"
 
-    @staticmethod
-    def from_latent(lg: LatentDigraph) -> MixedGraph:
+    @classmethod
+    def from_latent(cls, lg: LatentDigraph) -> MixedGraph:
         """
         Create a MixedGraph from a LatentDigraph by projecting out latent variables.
 
@@ -158,7 +158,7 @@ class MixedGraph:
         np.fill_diagonal(O, 0)
 
         L = lg.adj[np.ix_(observed, observed)]
-        return MixedGraph(L, O)
+        return cls(L, O)
 
     @classmethod
     def from_edges(

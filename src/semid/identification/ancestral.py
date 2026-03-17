@@ -259,7 +259,6 @@ def ancestral_identify_step(
             allowed_nodes_larger = sorted(allowed_nodes & set(tian_graph.nodes))
 
             if len(allowed_nodes_larger) >= len(node_parents):
-                # TODO: max_hops
                 half_trek_result = tian_graph.get_half_trek_system(
                     from_nodes=allowed_nodes_larger, to_nodes=node_parents
                 )

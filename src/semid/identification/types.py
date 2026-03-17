@@ -57,9 +57,10 @@ class GenericIDResult:
         ]
 
         nodes = self.mixed_graph.nodes
+
+        lines.append("Identified directed edges:")
         dir_edges: list[str] = []
         if num_solved_dir > 0:
-            lines.append("Identified directed edges:")
             count = 0
             for idx, child in enumerate(nodes):
                 for parent in self.solved_parents[idx]:
@@ -73,18 +74,16 @@ class GenericIDResult:
                     break
         else:
             dir_edges.append("None")
-
-        dir_str = ", ".join(dir_edges)
-        lines.append(f"  {dir_str}")
+        lines.append(f"  {', '.join(dir_edges)}")
         lines.append("")
 
         if num_solved_dir < num_dir_edges:
-            num_unsolved = num_dir_edges - num_solved_dir
-            lines.append(f"Unidentified directed edges: {num_unsolved}")
+            lines.append(f"Unidentified directed edges: {num_dir_edges - num_solved_dir}")
+            lines.append("")
 
+        lines.append("Identified bidir. edges:")
         bidir: list[str] = []
         if num_solved_bi > 0:
-            lines.append("Identified bidir. edges:")
             count = 0
             for idx, node in enumerate(nodes):
                 for sibling in filter(lambda j: node < j, self.solved_siblings[idx]):
@@ -98,14 +97,11 @@ class GenericIDResult:
                     break
         else:
             bidir.append("None")
-
-        bidir_str = ", ".join(bidir)
-        lines.append(f"  {bidir_str}")
+        lines.append(f"  {', '.join(bidir)}")
         lines.append("")
 
         if num_solved_bi < num_bi_edges:
-            num_unsolved = num_bi_edges - num_solved_bi
-            lines.append(f"Unidentified bidir. edges: {num_unsolved}")
+            lines.append(f"Unidentified bidir. edges: {num_bi_edges - num_solved_bi}")
 
         return "\n".join(lines)
 

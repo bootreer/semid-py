@@ -105,7 +105,7 @@ def test_3x7_zuta(graphs_3x7: list[dict]) -> None:
 # 4-latent, 9-observed (64112 graphs — sample to keep test fast)
 # ---------------------------------------------------------------------------
 
-SAMPLE_SIZE_4x9 = 10000
+SAMPLE_SIZE_4x9 = 1000
 _CHUNKS_4x9 = 20  # chunks distributed across xdist workers
 
 

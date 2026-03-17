@@ -281,16 +281,33 @@ class LatentDigraph:
 
     def _create_half_tr_graph(self) -> ig.Graph:
         """
-        Create a half-trek graph (trek graph without left-side directed edges).
+        Create a half-trek graph for mixed graphs with latent confounders.
 
-        Like _create_tr_graph but omits adj.T on the left side, so only
-        bridge edges (left->right) and right-side directed edges remain.
+        A half-trek from observed source i to target j allows:
+          1. A directed path i -> ... -> j, OR
+          2. A bidirected step i <-> k (via shared latent parent L: L->i, L->k)
+             followed by a directed path k -> ... -> j.
+
+        In the LatentDigraph representation, a bidirected edge i <-> j is encoded
+        as a latent node L with L->i and L->j. So a half-trek that uses the
+        bidirected edge from source i requires going backward from left-i to
+        left-L (the latent parent), then bridging to right-L, then forward.
+
+        Left-side rules:
+          - observed -> latent backward edges: allowed (encode bidirected steps)
+          - observed -> observed backward edges: NOT allowed (would make a full trek)
+          - latent -> anything backward: NOT needed (latents have no parents here)
         """
         m = self.num_nodes
+        p = self.num_observed
         adj_mat = np.zeros((2 * m, 2 * m), dtype=np.int32)
 
         for i in range(m):
-            adj_mat[i, m + i] = 1  # bridge edges only
+            adj_mat[i, m + i] = 1  # bridge edges
+
+        # Backward edges from observed nodes to their latent parents only.
+        # adj.T[obs, latent] = 1 iff adj[latent, obs] = 1 (latent -> obs edge exists).
+        adj_mat[0:p, p:m] = self._adj.T[0:p, p:m]
 
         adj_mat[m : 2 * m, m : 2 * m] = self._adj  # right-side directed edges
 

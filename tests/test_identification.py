@@ -3,9 +3,10 @@
 import numpy as np
 import pytest
 
-from semid import MixedGraph, semid
+from semid import MixedGraph, ancestral_id, htc_id, semid
 from tests.conftest import (
     GRAPH_EXAMPLES,
+    LFHTC_EXAMPLES,
     VERMA_L,
     VERMA_O,
     random_identification_test,
@@ -330,98 +331,23 @@ def test_lf_htc_id_basic():
     assert total_identified >= 0  # At minimum, we expect it to run without errors
 
 
-# Test cases from R package SEMID/tests/testthat/graphExamples.R
 @pytest.mark.parametrize(
-    "L,num_observed,expected_identifiable",
-    [
-        # Instrumental variables - should be identifiable
-        (
-            np.array(
-                [[0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 0], [0, 1, 1, 0]],
-                dtype=np.int32,
-            ),
-            3,
-            True,
-        ),
-        # One global latent variable - should be identifiable
-        (
-            np.array(
-                [
-                    [0, 1, 0, 0, 0, 0],
-                    [0, 0, 1, 0, 0, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [0, 0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1, 0],
-                ],
-                dtype=np.int32,
-            ),
-            5,
-            True,
-        ),
-        # Figure 1 from paper - should be identifiable
-        (
-            np.array(
-                [
-                    [0, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 0, 0, 0],
-                    [0, 0, 0, 1, 1, 0],
-                    [0, 0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1, 0],
-                ],
-                dtype=np.int32,
-            ),
-            5,
-            True,
-        ),
-        # Figure 2 from paper - should NOT be identifiable
-        (
-            np.array(
-                [
-                    [0, 1, 1, 0, 0, 0],
-                    [0, 0, 1, 0, 0, 0],
-                    [0, 0, 0, 1, 1, 0],
-                    [0, 0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [1, 1, 1, 1, 1, 0],
-                ],
-                dtype=np.int32,
-            ),
-            5,
-            False,
-        ),
-        # Figure 5 from paper - should be identifiable
-        (
-            np.array(
-                [
-                    [0, 0, 0, 0, 0, 0],
-                    [0, 0, 1, 0, 0, 0],
-                    [0, 0, 0, 1, 1, 0],
-                    [0, 0, 0, 0, 1, 0],
-                    [0, 0, 0, 0, 0, 0],
-                    [1, 0, 1, 1, 0, 0],
-                ],
-                dtype=np.int32,
-            ),
-            5,
-            True,
-        ),
-    ],
+    "example",
+    LFHTC_EXAMPLES,
+    ids=[ex.name for ex in LFHTC_EXAMPLES],
 )
-def test_lf_htc_id_r_examples(L, num_observed, expected_identifiable):
-    """Test lfhtcID on examples from R package test suite."""
-    from semid import LatentDigraph, lf_htc_id
+def test_lf_htc_id_r_examples(example):
+    """Test lfhtcID on all examples from R package test suite (digraphExamples)."""
+    from semid import lf_htc_id
 
-    graph = LatentDigraph(L, num_observed=num_observed)
+    graph = example.to_latent_digraph()
     result = lf_htc_id(graph)
 
-    # Check if all edges are identified
     is_identifiable = sum(len(p) for p in result.unsolved_parents) == 0
-
-    assert (
-        is_identifiable == expected_identifiable
-    ), f"Expected identifiable={expected_identifiable}, got {is_identifiable}"
+    assert is_identifiable == example.lfhtc_id, (
+        f"Example '{example.name}': expected lfhtc_id={example.lfhtc_id}, "
+        f"got {is_identifiable}"
+    )
 
 
 # =============================================================================
@@ -435,8 +361,6 @@ def test_ancestral_id_random_validation():
     Ported from R test_ancestral.R: tests that ancestral ID identifies a subset
     of what HTC identifies, and that identified parameters can be recovered.
     """
-    from semid import ancestral_id, htc_id
-
     from tests.conftest import random_directed_acyclic, random_undirected
 
     np.random.seed(3634)
@@ -614,3 +538,42 @@ def test_tian_decomposition_covariance_recovery():
                         f"Tian sigma recovery failed for component with "
                         f"internal={internal}, incoming={incoming}"
                     )
+
+
+@pytest.mark.parametrize("graph_example", GRAPH_EXAMPLES)
+def test_ancestral_id_known_examples(graph_example):
+    """Test ancestral_id on all known graph examples.
+
+    Ported from R test_graphID.ancestralID.R:
+    - htc_id == 0  → ancestral also cannot identify all edges (graph is generically non-id)
+    - htc_id == 1  → ancestral identifies all edges (stronger criterion)
+    - htc_id == -1 → every HTC-identified parent is also ancestral-identified
+    """
+    graph = graph_example.to_mixed_graph()
+
+    if not graph.directed.is_dag():
+        pytest.skip("Not a DAG")
+
+    htc_result = htc_id(graph, decompose=True)
+    anc_result = ancestral_id(graph, decompose=True)
+
+    total_edges = int(np.sum(graph.d_adj))
+
+    if graph_example.htc_id == 0:
+        anc_solved = sum(len(p) for p in anc_result.solved_parents)
+        assert anc_solved < total_edges, (
+            "Ancestral identified all edges on a generically non-identifiable graph"
+        )
+    elif graph_example.htc_id == 1:
+        assert all(len(p) == 0 for p in anc_result.unsolved_parents), (
+            "Ancestral failed to identify all edges on an HTC-identifiable graph"
+        )
+    else:  # htc_id == -1: HTC solved ⊆ ancestral solved
+        n = graph.num_nodes
+        for node in range(n):
+            htc_parents = set(htc_result.solved_parents[node])
+            anc_parents = set(anc_result.solved_parents[node])
+            assert htc_parents <= anc_parents, (
+                f"Node {node}: HTC identified parents {htc_parents} "
+                f"not all in ancestral parents {anc_parents}"
+            )

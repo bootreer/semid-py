@@ -54,6 +54,16 @@ class ZUTAResult:
     latent_nodes: list[int]
     observed_nodes: list[int]
 
+    def __str__(self) -> str:
+        lines = [
+            "ZUTA Result",
+            "=" * 40,
+            f"Latent nodes ({len(self.latent_nodes)}): {self.latent_nodes}",
+            f"Observed nodes ({len(self.observed_nodes)}): {self.observed_nodes}",
+            f"ZUTA: {self.zuta}",
+        ]
+        return "\n".join(lines)
+
 
 @dataclass
 class MatchingResult:
