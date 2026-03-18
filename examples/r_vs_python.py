@@ -86,6 +86,41 @@ def _(np, semid):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    ### Alternative: `from_edges`
+
+    Python also supports constructing a `MixedGraph` from edge lists, which is
+    more convenient when the graph is sparse.
+
+    ````python
+    # Python only
+    g = semid.MixedGraph.from_edges(
+        n_nodes=5,
+        directed=[(0, 1), (1, 3), (1, 4), (2, 3), (3, 1), (3, 4), (4, 3)],
+        bidirected=[(1, 2), (1, 4), (2, 3)],
+    )
+    ````
+
+    ### Alternative: flat arrays
+
+    Both adjacency matrices can also be passed as flat 1D arrays together with
+    an explicit `n` (number of nodes). This mirrors how R's `matrix()` accepts
+    a flat vector:
+
+    ````python
+    # Python only
+    g = semid.MixedGraph(
+        [0,1,0,0,0, 0,0,0,1,1, 0,0,0,1,0, 0,1,0,0,1, 0,0,0,1,0],
+        [0,0,0,0,0, 0,0,1,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,0,0],
+        n=5,
+    )
+    ````
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Identification Functions
 
     Function names use `camelCase` in R and `snake_case` in Python.
@@ -287,6 +322,76 @@ def _(lam, np, semid):
     adj[p:, :p] = lam.T  # latent -> observed
     g_fa = semid.LatentDigraph(adj, num_observed=p)
     print(semid.m_id(g_fa))
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Python-only: LSC Identification
+
+    `lsc_id` implements the Latent Subgraph Criterion for identifying edges in
+    a `LatentDigraph`. There is no equivalent in the R SEMID package.
+
+    ````python
+    # Python only
+    semid.lsc_id(g)
+    semid.lsc_id(g, subset_size_control=2)  # limit subset search depth
+    ````
+    """)
+    return
+
+
+@app.cell
+def _(np, semid):
+    # Python only
+    L_lsc = np.array(
+        [
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0],
+            [1, 1, 1, 1, 1, 0],  # latent -> all observed
+        ],
+        dtype=np.int32,
+    )
+    g_lsc = semid.LatentDigraph(L_lsc, num_observed=5)
+    print(semid.lsc_id(g_lsc))
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Python-only: Causal Effect Identification
+
+    `check_criterion` and `wholematrix_criterion` check identifiability of
+    causal effect vectors via vertex-disjoint max-flow. There is no equivalent
+    in the R SEMID package.
+
+    - `check_criterion(g, v, q)` — checks whether the causal effect of node
+      set `q` on node `v` is identifiable.
+    - `wholematrix_criterion(g)` — checks whether the entire causal effect
+      matrix is identifiable.
+
+    ````python
+    # Python only
+    from semid.identification.causal_effect import check_criterion, wholematrix_criterion
+    check_criterion(g, v=3, q={1, 2})
+    wholematrix_criterion(g)
+    ````
+    """)
+    return
+
+
+@app.cell
+def _(g):
+    # Python only
+    from semid.identification.causal_effect import check_criterion, wholematrix_criterion
+
+    print("check_criterion(g, v=3, q={1, 2}):", check_criterion(g, v=3, q={1, 2}))
+    print("wholematrix_criterion(g):", wholematrix_criterion(g))
     return
 
 

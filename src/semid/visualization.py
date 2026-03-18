@@ -277,14 +277,14 @@ def plot_mixed_graph(
     ax.set_aspect("equal")
     ax.axis("off")
 
-    # Auto-scale with padding
-    margin = 0.1
+    # Auto-scale with padding — square viewport keeps aspect='equal' well-behaved
+    margin = 0.15
     x_min, x_max = positions[:, 0].min(), positions[:, 0].max()
     y_min, y_max = positions[:, 1].min(), positions[:, 1].max()
-    x_range = x_max - x_min if x_max > x_min else 1
-    y_range = y_max - y_min if y_max > y_min else 1
-    ax.set_xlim(x_min - margin * x_range, x_max + margin * x_range)
-    ax.set_ylim(y_min - margin * y_range, y_max + margin * y_range)
+    cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
+    half = max(x_max - x_min, y_max - y_min, 1.0) / 2
+    ax.set_xlim(cx - half * (1 + margin), cx + half * (1 + margin))
+    ax.set_ylim(cy - half * (1 + margin), cy + half * (1 + margin))
 
     if show:
         plt.show()
@@ -450,14 +450,14 @@ def plot_latent_digraph(
     ax.set_aspect("equal")
     ax.axis("off")
 
-    # Auto-scale with padding
-    margin = 0.1
+    # Auto-scale with padding — square viewport keeps aspect='equal' well-behaved
+    margin = 0.15
     x_min, x_max = positions[:, 0].min(), positions[:, 0].max()
     y_min, y_max = positions[:, 1].min(), positions[:, 1].max()
-    x_range = x_max - x_min if x_max > x_min else 1
-    y_range = y_max - y_min if y_max > y_min else 1
-    ax.set_xlim(x_min - margin * x_range, x_max + margin * x_range)
-    ax.set_ylim(y_min - margin * y_range, y_max + margin * y_range)
+    cx, cy = (x_min + x_max) / 2, (y_min + y_max) / 2
+    half = max(x_max - x_min, y_max - y_min, 1.0) / 2
+    ax.set_xlim(cx - half * (1 + margin), cx + half * (1 + margin))
+    ax.set_ylim(cy - half * (1 + margin), cy + half * (1 + margin))
 
     if show:
         plt.show()
