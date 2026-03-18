@@ -104,8 +104,9 @@ class MIDResult:
             f"Steps: {len(self.steps)}",
         ]
         for i, step in enumerate(self.steps):
-            new_nodes = step.new_nodes_in_S if step.new_nodes_in_S else [step.h]
-            lines.append(f"  Step {i + 1} [{step.criterion}]: identified {new_nodes}")
+            lines.append(
+                f"  Step {i + 1} [matching]: h={step.h}, v={step.v}, W={step.W}, U={step.U}"
+            )
         return "\n".join(lines)
 
 
@@ -134,7 +135,7 @@ class ExtMIDResult:
                 )
             else:
                 lines.append(
-                    f"  Step {i + 1} [matching]: identified h={step.h}, v={step.v}, W={step.W}"
+                    f"  Step {i + 1} [matching]: h={step.h}, v={step.v}, W={step.W}, U={step.U}"
                 )
         return "\n".join(lines)
 

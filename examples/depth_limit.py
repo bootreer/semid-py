@@ -1,10 +1,10 @@
 import marimo
 
-__generated_with = "0.19.11"
+__generated_with = "0.21.0"
 app = marimo.App()
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
     # Demo: Testing HTC identifiability with depth limited treks
@@ -49,9 +49,9 @@ def _():
 
 @app.cell
 def _():
-    graph_sizes = [8, 25, 50, 100, 150]
-    ps = [0.1, 0.2, 0.3]
-    qs = [0.2, 0.3, 0.4, 0.5, 0.6]
+    graph_sizes = [25, 50, 100]
+    ps = [0.1, 0.3]
+    qs = [0.2, 0.3, 0.5, 0.6]
     depths = [1, 2, 3, 5, 10, None]  # None = unlimited
     return depths, graph_sizes, ps, qs
 
